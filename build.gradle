@@ -34,6 +34,7 @@ dependencies {
 	testImplementation 'org.springframework.security:spring-security-test'
 
 	//O365
+	implementation 'com.azure:azure-identity:1.11.2'
 	implementation 'com.microsoft.graph:microsoft-graph:5.74.0'
 	implementation 'com.nimbusds:oauth2-oidc-sdk:11.8'
 	implementation 'com.squareup.okhttp3:okhttp:4.12.0'
