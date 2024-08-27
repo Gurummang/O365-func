@@ -30,8 +30,8 @@ dependencies {
 	runtimeOnly 'com.mysql:mysql-connector-j'
 
 	// Security
-	implementation 'org.springframework.boot:spring-boot-starter-security'
-	testImplementation 'org.springframework.security:spring-security-test'
+//	implementation 'org.springframework.boot:spring-boot-starter-security'
+//	testImplementation 'org.springframework.security:spring-security-test'
 
 	//O365
 	implementation 'com.azure:azure-identity:1.11.2'
@@ -73,6 +73,7 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testImplementation 'org.assertj:assertj-core:3.24.2'
 	testImplementation 'org.mockito:mockito-core'
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 }
 
 tasks.named('test') {
