@@ -4,6 +4,8 @@ import com.GASB.o365_func.model.dto.MsFileInfoDto;
 import com.GASB.o365_func.model.entity.*;
 import com.GASB.o365_func.model.mapper.MsFileMapper;
 import com.GASB.o365_func.repository.*;
+import com.GASB.o365_func.tlsh.Tlsh;
+import com.GASB.o365_func.tlsh.TlshCreator;
 import com.microsoft.graph.models.Drive;
 import com.microsoft.graph.models.Request;
 import com.microsoft.graph.requests.GraphServiceClient;
@@ -31,6 +33,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -95,29 +98,6 @@ public class FileDownloadUtil {
     }
 
 
-    private byte[] downloadFile(String fileUrl, String token) throws IOException {
-        try {
-            // URL에서 따옴표 제거
-            String sanitizedUrl = fileUrl.replace("\"", "").trim();
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "Bearer " + token);
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-
-            ResponseEntity<byte[]> response = restTemplate.exchange(sanitizedUrl, HttpMethod.GET, entity, byte[].class);
-
-            if (response.getStatusCode() == HttpStatus.OK) {
-                return response.getBody();
-            } else {
-                throw new IOException("Failed to download file from URL: " + sanitizedUrl);
-            }
-        } catch (RestClientException e) {
-            log.error("Error downloading file from URL {}: {}", fileUrl, e.getMessage(), e);
-            throw new IOException("Error downloading file", e);
-        }
-    }
-
-
     private byte[] downloadFileWithSDK(String dirPath, MsFileInfoDto file, GraphServiceClient graphClient) {
         try {
             InputStream inputStream = graphClient.users(file.getFile_owner_id())
@@ -165,6 +145,9 @@ public class FileDownloadUtil {
         log.info("file event type : {}", event_type);
 
         String hash = calculateHash(fileData);
+        Tlsh tlsh = computeTlsHash(fileData);
+        log.info(tlsh.toString());
+
         LocalDateTime changeTime = extractChangeTime(event_type);
 
 
@@ -182,7 +165,7 @@ public class FileDownloadUtil {
         String filePath = BASE_PATH.resolve(file.getFile_name()).toString();
         String s3Key = getFullPath(file, saasName, orgName, hash);
 
-        processAndSaveFileData(file, hash, s3Key, orgSaaSObject, changeTime, event_type, user, s3Key);
+        processAndSaveFileData(file, hash, s3Key, orgSaaSObject, changeTime, event_type, user, s3Key, tlsh.toString());
 
         uploadFileToS3(filePath, s3Key);
 
@@ -210,6 +193,27 @@ public class FileDownloadUtil {
         return hexString.toString();
     }
 
+    //TLSH 해시 계산
+    private Tlsh computeTlsHash(byte[] fileData) throws IOException {
+        if (fileData == null) {
+            throw new IllegalArgumentException("fileData cannot be null");
+        }
+        final int BUFFER_SIZE = 4096;
+        TlshCreator tlshCreator = new TlshCreator();
+
+        try (InputStream is = new ByteArrayInputStream(fileData)) {
+            byte[] buf = new byte[BUFFER_SIZE];
+            int bytesRead;
+            while ((bytesRead = is.read(buf)) != -1) {
+                tlshCreator.update(buf, 0, bytesRead);
+            }
+        } catch (IOException e) {
+            throw new IOException("Error computing TLSH hash", e);
+        }
+
+        return tlshCreator.getHash();
+    }
+
     private LocalDateTime extractChangeTime(String event_type) {
         LocalDateTime changeTime = null;
         if (event_type.contains(":")) {
@@ -233,10 +237,10 @@ public class FileDownloadUtil {
         return String.format("%s/%s/%s/%s/%s/%s", orgName, saasName, workspaceName, channelName, hash, title);
     }
 
-    private void processAndSaveFileData(MsFileInfoDto file, String hash, String s3Key, OrgSaaS orgSaaSObject, LocalDateTime changeTime, String event_type, MonitoredUsers user, String uploadedChannelPath) {
+    private void processAndSaveFileData(MsFileInfoDto file, String hash, String s3Key, OrgSaaS orgSaaSObject, LocalDateTime changeTime, String event_type, MonitoredUsers user, String uploadedChannelPath, String tlsh) {
         StoredFile storedFile = msFileMapper.toStoredFileEntity(file, hash, s3Key);
         FileUploadTable fileUploadTableObject = msFileMapper.toFileUploadEntity(file, orgSaaSObject, hash, changeTime);
-        Activities activity = msFileMapper.toActivityEntity(file, event_type, user, uploadedChannelPath);
+        Activities activity = msFileMapper.toActivityEntity(file, event_type, user, uploadedChannelPath,tlsh);
 
         synchronized (this) {
             saveActivity(activity, file.getFile_name());
