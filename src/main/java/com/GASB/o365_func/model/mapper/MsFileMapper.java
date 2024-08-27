@@ -75,7 +75,7 @@ public class MsFileMapper {
     }
 
 
-    public Activities toActivityEntity(MsFileInfoDto file, String eventType, MonitoredUsers user, String channel) {
+    public Activities toActivityEntity(MsFileInfoDto file, String eventType, MonitoredUsers user, String channel, String tlsh) {
         if (file == null) {
             return null;
         }
@@ -92,7 +92,7 @@ public class MsFileMapper {
                 .fileName(file.getFile_name())
                 .eventTs(file.getFile_created_time())  // eventTs가 null일 수 있음에 유의
                 .uploadChannel(channel)
-                .tlsh("test")
+                .tlsh(tlsh)
                 .build();
     }
 
