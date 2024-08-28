@@ -1,5 +1,6 @@
 package com.GASB.o365_func.service;
 
+import com.GASB.o365_func.model.dto.TopUserDTO;
 import com.GASB.o365_func.model.entity.MonitoredUsers;
 import com.GASB.o365_func.model.mapper.MsUserMapper;
 import com.GASB.o365_func.repository.MonitoredUsersRepo;
@@ -7,8 +8,10 @@ import com.GASB.o365_func.service.api_call.MsApiService;
 import com.microsoft.graph.requests.UserCollectionPage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -51,6 +54,27 @@ public class MsUserService {
             log.error("Async error occurred for workspaceId: {}", workspaceId, ex);
             return null;
         });
+    }
+
+    public List<TopUserDTO> getTopUsers(int orgId, int saasId) {
+        try {
+            List<Object[]> results = monitoredUsersRepo.findTopUsers(orgId, saasId);
+
+            return results.stream().map(result -> new TopUserDTO(
+                    (String) result[0],
+                    ((Number) result[1]).longValue(),
+                    ((Number) result[2]).longValue(),
+                    ((java.sql.Timestamp) result[3]).toLocalDateTime()
+            )).collect(Collectors.toList());
+
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error retrieving top users", e);
+        }
+    }
+
+    @Async("threadPoolTaskExecutor")
+    public CompletableFuture<List<TopUserDTO>> getTopUsersAsync(int orgId, int saasId) {
+        return CompletableFuture.supplyAsync(() -> getTopUsers(orgId, saasId));
     }
 
 

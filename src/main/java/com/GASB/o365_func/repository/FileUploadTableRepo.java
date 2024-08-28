@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
+@Transactional
 public interface FileUploadTableRepo extends JpaRepository<FileUploadTable, Long> {
     @Query("SELECT o.id FROM FileUploadTable fu " +
             "JOIN fu.orgSaaS os " +
@@ -81,7 +82,7 @@ public interface FileUploadTableRepo extends JpaRepository<FileUploadTable, Long
     @Query("SELECT f FROM FileUploadTable f WHERE f.timestamp = :timestamp AND f.hash = :hash")
     Optional<FileUploadTable> findByTimestampAndHash(@Param("timestamp") LocalDateTime timestamp, @Param("hash") String hash);
 
-    @Query("SELECT SlackRecentFileDTO(a.fileName, u.userName, sf.type, fu.timestamp) " +
+    @Query("SELECT new com.GASB.o365_func.model.dto.MsRecentFileDTO(a.fileName, u.userName, sf.type, fu.timestamp) " +
             "FROM FileUploadTable fu " +
             "JOIN OrgSaaS os ON fu.orgSaaS.id = os.id " +
             "JOIN Activities a ON fu.saasFileId = a.saasFileId " +
