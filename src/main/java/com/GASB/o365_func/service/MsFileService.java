@@ -1,8 +1,14 @@
 package com.GASB.o365_func.service;
 
+import com.GASB.o365_func.model.dto.MsFileCountDto;
+import com.GASB.o365_func.model.dto.MsFileSizeDto;
+import com.GASB.o365_func.model.dto.MsRecentFileDTO;
 import com.GASB.o365_func.model.entity.OrgSaaS;
 import com.GASB.o365_func.model.mapper.MsFileMapper;
+import com.GASB.o365_func.repository.ActivitiesRepo;
+import com.GASB.o365_func.repository.FileUploadTableRepo;
 import com.GASB.o365_func.repository.OrgSaaSRepo;
+import com.GASB.o365_func.repository.StoredFileRepo;
 import com.GASB.o365_func.service.api_call.MsApiService;
 import com.microsoft.graph.models.DriveItem;
 import com.microsoft.graph.requests.DriveItemCollectionPage;
@@ -12,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -25,13 +32,17 @@ public class MsFileService {
     private final FileDownloadUtil fileDownloadUtil;
     private final OrgSaaSRepo orgSaaSRepo;
     private final MsFileMapper msFileMapper;
+    private final FileUploadTableRepo fileUploadTableRepo;
+    private final StoredFileRepo storedFilesRepository;
+    private final ActivitiesRepo activitiesRepo;
+
     @Async("threadPoolTaskExecutor")
     public CompletableFuture<Void> initFiles(String email, int workspaceId) {
         return CompletableFuture.runAsync(() -> {
             log.info("workspaceId : {}", workspaceId);
             try {
                 List<DriveItemCollectionPage> itemPages = msApiService.fetchFileLists();
-                String accessToken = msApiService.getAccessToken();
+//                String accessToken = msApiService.getAccessToken();
                 GraphServiceClient graphClient = msApiService.getGraphClient();
                 OrgSaaS orgSaaSObject = orgSaaSRepo.findById(workspaceId).orElse(null);
 
@@ -67,5 +78,45 @@ public class MsFileService {
         log.info("Size: {}", item.size);
         log.info("file_path : {}", Objects.requireNonNull(item.parentReference).path);
         log.info("------------------------------");
+    }
+
+    public List<MsRecentFileDTO> msRecentFiles(int orgId, int saasId) {
+        try {
+            return fileUploadTableRepo.findRecentFilesByOrgIdAndSaasId(orgId, saasId);
+        } catch (Exception e) {
+            log.error("Error retrieving recent files for org_id: {} and saas_id: {}", orgId, saasId, e);
+            return Collections.emptyList();
+        }
+    }
+
+    public Long getTotalFileSize(int orgId, int saasId) {
+        Long totalFileSize = storedFilesRepository.getTotalFileSize(orgId, saasId);
+        return totalFileSize != null ? totalFileSize : 0L; // null 반환 방지
+    }
+
+    public Long getTotalMaliciousFileSize(int orgId, int saasId) {
+        Long totalMaliciousFileSize = storedFilesRepository.getTotalMaliciousFileSize(orgId, saasId);
+        return totalMaliciousFileSize != null ? totalMaliciousFileSize : 0L; // null 반환 방지
+    }
+
+    public Long getTotalDlpFileSize(int orgId, int saasId) {
+        Long totalDlpFileSize = storedFilesRepository.getTotalDlpFileSize(orgId, saasId);
+        return totalDlpFileSize != null ? totalDlpFileSize : 0L; // null 반환 방지
+    }
+    public MsFileSizeDto sumOfMsFileSize(int orgId, int saasId) {
+        return MsFileSizeDto.builder()
+                .totalSize((float) getTotalFileSize(orgId,saasId) / 1073741824)
+                .sensitiveSize((float) getTotalDlpFileSize(orgId,saasId) / 1073741824)
+                .maliciousSize((float) getTotalMaliciousFileSize(orgId,saasId) / 1073741824)
+                .build();
+    }
+
+    public MsFileCountDto MsFileCountSum(int orgId, int saasId) {
+        return MsFileCountDto.builder()
+                .totalFiles(storedFilesRepository.countTotalFiles(orgId, saasId))
+                .sensitiveFiles(storedFilesRepository.countSensitiveFiles(orgId, saasId))
+                .maliciousFiles(storedFilesRepository.countMaliciousFiles(orgId, saasId))
+                .connectedAccounts(storedFilesRepository.countConnectedAccounts(orgId, saasId))
+                .build();
     }
 }
