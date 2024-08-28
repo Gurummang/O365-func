@@ -56,6 +56,7 @@ public class FileDownloadUtil {
     private final S3Client s3Client;
     private final MsFileMapper msFileMapper;
     private final MonitoredUsersRepo monitoredUsersRepo;
+    private final ScanUtil scanUtil;
 
 
     private static final String HASH_ALGORITHM = "SHA-256";
@@ -165,7 +166,8 @@ public class FileDownloadUtil {
         String filePath = BASE_PATH.resolve(file.getFile_name()).toString();
         String s3Key = getFullPath(file, saasName, orgName, hash);
 
-        processAndSaveFileData(file, hash, s3Key, orgSaaSObject, changeTime, event_type, user, s3Key, tlsh.toString());
+        processAndSaveFileData(file, hash, s3Key, orgSaaSObject, changeTime, event_type, user, s3Key, tlsh.toString(), filePath);
+
 
         uploadFileToS3(filePath, s3Key);
 
@@ -237,7 +239,9 @@ public class FileDownloadUtil {
         return String.format("%s/%s/%s/%s/%s/%s", orgName, saasName, workspaceName, channelName, hash, title);
     }
 
-    private void processAndSaveFileData(MsFileInfoDto file, String hash, String s3Key, OrgSaaS orgSaaSObject, LocalDateTime changeTime, String event_type, MonitoredUsers user, String uploadedChannelPath, String tlsh) {
+    private void processAndSaveFileData(MsFileInfoDto file, String hash, String s3Key, OrgSaaS orgSaaSObject,
+                                        LocalDateTime changeTime, String event_type, MonitoredUsers user,
+                                        String uploadedChannelPath, String tlsh, String filePath) {
         StoredFile storedFile = msFileMapper.toStoredFileEntity(file, hash, s3Key);
         FileUploadTable fileUploadTableObject = msFileMapper.toFileUploadEntity(file, orgSaaSObject, hash, changeTime);
         Activities activity = msFileMapper.toActivityEntity(file, event_type, user, uploadedChannelPath,tlsh);
@@ -247,6 +251,8 @@ public class FileDownloadUtil {
             saveFileUpload(fileUploadTableObject, file.getFile_name());
             saveStoredFile(storedFile, file.getFile_name());
         }
+
+        scanUtil.scanFile(file, fileUploadTableObject, filePath);
     }
 
     private void saveActivity(Activities activity, String file_name) {
