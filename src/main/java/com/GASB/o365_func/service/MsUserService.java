@@ -5,6 +5,7 @@ import com.GASB.o365_func.model.entity.MonitoredUsers;
 import com.GASB.o365_func.model.mapper.MsUserMapper;
 import com.GASB.o365_func.repository.MonitoredUsersRepo;
 import com.GASB.o365_func.service.api_call.MsApiService;
+import com.microsoft.graph.requests.GraphServiceClient;
 import com.microsoft.graph.requests.UserCollectionPage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +34,8 @@ public class MsUserService {
         return CompletableFuture.runAsync(() -> {
             log.info("workspaceId : {}", workspaceId);
             try {
-                UserCollectionPage users = msApiService.fetchUsersList();
+                GraphServiceClient graphClient = msApiService.createGraphClient(email, workspaceId);
+                UserCollectionPage users = msApiService.fetchUsersList(graphClient);
                 log.info("orgSaaSId: {}", workspaceId);
 
                 List<MonitoredUsers> monitoredUsers = users.getCurrentPage().stream()

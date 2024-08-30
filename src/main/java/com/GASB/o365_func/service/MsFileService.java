@@ -41,9 +41,10 @@ public class MsFileService {
         return CompletableFuture.runAsync(() -> {
             log.info("workspaceId : {}", workspaceId);
             try {
-                List<DriveItemCollectionPage> itemPages = msApiService.fetchFileLists();
+                GraphServiceClient graphClient = msApiService.createGraphClient(email,workspaceId);
+                List<DriveItemCollectionPage> itemPages = msApiService.fetchFileLists(graphClient);
 //                String accessToken = msApiService.getAccessToken();
-                GraphServiceClient graphClient = msApiService.getGraphClient();
+
                 OrgSaaS orgSaaSObject = orgSaaSRepo.findById(workspaceId).orElse(null);
 
                 for (DriveItemCollectionPage itemPage : itemPages){

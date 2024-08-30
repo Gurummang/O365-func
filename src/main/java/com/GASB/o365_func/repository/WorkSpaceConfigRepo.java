@@ -11,7 +11,9 @@ import java.util.Optional;
 
 @Repository
 public interface WorkSpaceConfigRepo extends JpaRepository<WorkspaceConfig, String> {
-    Optional<WorkspaceConfig> findById(int id);
+
+    @Query("SELECT config FROM WorkspaceConfig config WHERE config.id = :id")
+    Optional<WorkspaceConfig> findById(@Param("id") int id);
 
     @Query("SELECT config.token FROM WorkspaceConfig config WHERE config.id = :id")
     String findByWorkSpaceId(@Param("id")int id);

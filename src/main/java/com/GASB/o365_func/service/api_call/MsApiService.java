@@ -1,6 +1,8 @@
 package com.GASB.o365_func.service.api_call;
 
+import com.GASB.o365_func.model.entity.WorkspaceConfig;
 import com.GASB.o365_func.repository.MonitoredUsersRepo;
+import com.GASB.o365_func.repository.WorkSpaceConfigRepo;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
@@ -31,54 +33,35 @@ import java.util.Objects;
 public class MsApiService {
 
     // 흠 굳이 토큰값을 저장할 필요없이 주입받는게 나으려나?
-    private final String clientId;
-    private final String clientSecret;
-    private final String tenantId;
+//    private final String clientId;
+//    private final String clientSecret;
+//    private final String tenantId;
     private String accessToken;
     private static final List<String> SCOPES = List.of("https://graph.microsoft.com/.default");
-
-    private final GraphServiceClient graphClient;
     private final MonitoredUsersRepo monitoredUsersRepo;
-
+    private final SimpleAuthProvider simpleAuthProvider;
+    private final WorkSpaceConfigRepo workspaceConfigRepo;
     @Autowired
-    public MsApiService(@Value("${onedrive.client.id}") String clientId,
-                        @Value("${onedrive.client.secret}") String clientSecret,
-                        @Value("${onedrive.tenant.id}") String tenantId,
-                        MonitoredUsersRepo monitoredUsersRepo) {
-        this.clientId = clientId;
-        this.clientSecret = clientSecret;
-        this.tenantId = tenantId;
-
-        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
-                .clientId(clientId)
-                .clientSecret(clientSecret)
-                .tenantId(tenantId)
-                .build();
-
-        TokenCredentialAuthProvider tokenCredentialAuthProvider = new TokenCredentialAuthProvider(SCOPES, clientSecretCredential);
-        TokenRequestContext requestContext = new TokenRequestContext().addScopes(SCOPES.get(0));
-
-        accessToken = Objects.requireNonNull(clientSecretCredential.getToken(requestContext).block()).getToken();
-        log.info("Access token: {}", accessToken);
-        this.graphClient = GraphServiceClient
-                .builder()
-                .authenticationProvider(tokenCredentialAuthProvider)
-                .buildClient();
-
+    public MsApiService(MonitoredUsersRepo monitoredUsersRepo, SimpleAuthProvider simpleAuthProvider, WorkSpaceConfigRepo workspaceConfigRepo) {
+        this.simpleAuthProvider = simpleAuthProvider;
         this.monitoredUsersRepo = monitoredUsersRepo;
-    }
-    // Get user information
-    public User fetchUsers(String userId) {
-        return graphClient.users(userId)
-                .buildRequest()
-                .get();
+        this.workspaceConfigRepo = workspaceConfigRepo;
     }
 
-    public GraphServiceClient getGraphClient(){
-        return graphClient;
+    public GraphServiceClient createGraphClient(String email, int workspace_id){
+        WorkspaceConfig workspaceConfig = workspaceConfigRepo.findById(workspace_id)
+                .orElseThrow(() -> new RuntimeException("Workspace not found for id: " + workspace_id));
+
+
+        String token = workspaceConfig.getToken();
+        simpleAuthProvider.setAccessToken(token);
+        return GraphServiceClient
+                .builder()
+                .authenticationProvider(simpleAuthProvider)
+                .buildClient();
     }
 
-    public UserCollectionPage fetchUsersList(){
+    public UserCollectionPage fetchUsersList(GraphServiceClient graphClient){
         return graphClient.users()
                 .buildRequest()
                 .select("id,displayName,mail")
@@ -86,7 +69,7 @@ public class MsApiService {
     }
 
     // List files
-    public List<DriveItemCollectionPage> fetchFileLists() {
+    public List<DriveItemCollectionPage> fetchFileLists(GraphServiceClient graphClient) {
         List<String> userList = monitoredUsersRepo.getUserList();
         List<DriveItemCollectionPage> responses = new ArrayList<>();
         for (String user_id : userList) {
@@ -117,28 +100,5 @@ public class MsApiService {
     }
     public String getAccessToken(){
         return accessToken;
-    }
-
-    public String refreshAccessToken(){
-        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
-                .clientId(clientId)
-                .clientSecret(clientSecret)
-                .tenantId(tenantId)
-                .build();
-        TokenRequestContext requestContext = new TokenRequestContext().addScopes(SCOPES.get(0));
-
-        return Objects.requireNonNull(clientSecretCredential.getToken(requestContext).block()).getToken();
-    }
-
-
-    // Download file
-    public byte[] downloadFile(String userId, String itemId) throws Exception {
-        InputStream fileStream = graphClient.users(userId)
-                .drive()
-                .items(itemId)
-                .content()
-                .buildRequest()
-                .get();
-        return fileStream.readAllBytes();
     }
 }
