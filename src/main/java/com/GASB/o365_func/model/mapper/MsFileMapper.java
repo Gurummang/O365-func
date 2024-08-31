@@ -4,11 +4,13 @@ package com.GASB.o365_func.model.mapper;
 import com.GASB.o365_func.model.dto.MsFileInfoDto;
 import com.GASB.o365_func.model.entity.*;
 import com.GASB.o365_func.repository.MonitoredUsersRepo;
+import com.GASB.o365_func.service.enumset.MimeType;
 import com.microsoft.graph.models.DriveItem;
 import com.microsoft.graph.models.File;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.james.mime4j.dom.datetime.DateTime;
+import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -35,11 +37,11 @@ public class MsFileMapper {
         return MsFileInfoDto.builder()
                 .file_id(item.id)
                 .file_name(item.name)
-                .file_type(item.file.mimeType) //이거는 mimeType이라서 좀 수정할 필요있음
+                .file_type(MimeType.getExtensionByMimeType(item.file.mimeType)) //이거는 mimeType이라서 좀 수정할 필요있음
                 .file_download_url(item.additionalDataManager().get("@microsoft.graph.downloadUrl").toString())
                 .file_size(item.size)
-                .file_owner_id(item.createdBy.user.id)
-                .file_owner_name(item.createdBy.user.displayName)
+                .file_owner_id(Objects.requireNonNull(Objects.requireNonNull(item.createdBy).user).id)
+                .file_owner_name(Objects.requireNonNull(item.createdBy.user).displayName)
                 .file_created_time(Objects.requireNonNull(item.createdDateTime).toLocalDateTime().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("Asia/Seoul")).toLocalDateTime())
                 .file_path(Objects.requireNonNull(item.parentReference).path)
                 .isOneDrive(true)
@@ -49,16 +51,17 @@ public class MsFileMapper {
         return MsFileInfoDto.builder()
                 .file_id(item.id)
                 .file_name(item.name)
-                .file_type(item.file.mimeType) //이거는 mimeType이라서 좀 수정할 필요있음
+                .file_type(MimeType.getExtensionByMimeType(item.file.mimeType)) //이거는 mimeType이라서 좀 수정할 필요있음
                 .file_download_url(item.additionalDataManager().get("@microsoft.graph.downloadUrl").toString())
                 .file_size(item.size)
-                .file_owner_id(item.createdBy.user.id)
-                .file_owner_name(item.createdBy.user.displayName)
+                .file_owner_id(Objects.requireNonNull(Objects.requireNonNull(item.createdBy).user).id)
+                .file_owner_name(Objects.requireNonNull(item.createdBy.user).displayName)
                 .file_created_time(Objects.requireNonNull(item.createdDateTime).toLocalDateTime().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("Asia/Seoul")).toLocalDateTime())
                 .file_path(Objects.requireNonNull(item.parentReference).path)
                 .site_id(item.parentReference.siteId)
                 .build();
     }
+
     public StoredFile toStoredFileEntity(MsFileInfoDto file, String hash, String filePath) {
         if (file == null) {
             return null;
