@@ -1,6 +1,7 @@
 package com.GASB.o365_func.service;
 
 import com.GASB.o365_func.model.dto.MsFileCountDto;
+import com.GASB.o365_func.model.dto.MsFileInfoDto;
 import com.GASB.o365_func.model.dto.MsFileSizeDto;
 import com.GASB.o365_func.model.dto.MsRecentFileDTO;
 import com.GASB.o365_func.model.entity.OrgSaaS;
@@ -10,9 +11,11 @@ import com.GASB.o365_func.repository.FileUploadTableRepo;
 import com.GASB.o365_func.repository.OrgSaaSRepo;
 import com.GASB.o365_func.repository.StoredFileRepo;
 import com.GASB.o365_func.service.api_call.MsApiService;
+import com.microsoft.graph.models.Drive;
 import com.microsoft.graph.models.DriveItem;
 import com.microsoft.graph.requests.DriveItemCollectionPage;
 import com.microsoft.graph.requests.GraphServiceClient;
+import com.microsoft.graph.requests.SiteCollectionPage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -43,8 +46,7 @@ public class MsFileService {
             try {
                 GraphServiceClient graphClient = msApiService.createGraphClient(email,workspaceId);
                 List<DriveItemCollectionPage> itemPages = msApiService.fetchFileLists(graphClient);
-//                String accessToken = msApiService.getAccessToken();
-
+                List<DriveItemCollectionPage> siteItems = msApiService.fetchFileListsInSite(graphClient, msApiService.fetchSiteLists(graphClient));
                 OrgSaaS orgSaaSObject = orgSaaSRepo.findById(workspaceId).orElse(null);
 
                 for (DriveItemCollectionPage itemPage : itemPages){
@@ -53,7 +55,19 @@ public class MsFileService {
                         if(item.folder != null){ //폴더일 경우 넘긴다.
                             continue;
                         }
-                        fileDownloadUtil.processAndStoreFile(msFileMapper.toEntity(item),orgSaaSObject,workspaceId, "file_upload",graphClient);
+                        fileDownloadUtil.processAndStoreFile(msFileMapper.toOneDriveEntity(item),orgSaaSObject,workspaceId, "file_upload",graphClient);
+                    }
+                }
+
+                for (DriveItemCollectionPage siteItem : siteItems){
+                    for (DriveItem item : siteItem.getCurrentPage()){
+                        loggingResult(item);
+                        if(item.folder != null){ //폴더일 경우 넘긴다.
+                            continue;
+                        }
+                        MsFileInfoDto msFileInfoDto = msFileMapper.toSharePointEntity(item);
+                        log.info("site_id : {}", msFileInfoDto.getSite_id());
+                        fileDownloadUtil.processAndStoreFile(msFileInfoDto,orgSaaSObject,workspaceId, "file_upload",graphClient);
                     }
                 }
             } catch (Exception ex) {

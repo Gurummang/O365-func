@@ -75,7 +75,7 @@ public class ScanUtil {
     @Transactional
     protected void addData(FileUploadTable fileUploadTableObject, boolean correct, String mimeType, String signature, String extension) {
         if (fileUploadTableObject == null || fileUploadTableObject.getId() == null) {
-//            log.error("Invalid file upload object: {}, {}", fileUploadObject, fileUploadObject.getId());
+            log.error("Invalid file upload object: {}, {}", fileUploadTableObject, fileUploadTableObject.getId());
 
             throw new IllegalArgumentException("Invalid file upload object");
         }
