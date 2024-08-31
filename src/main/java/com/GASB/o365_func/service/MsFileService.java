@@ -51,7 +51,7 @@ public class MsFileService {
 
                 for (DriveItemCollectionPage itemPage : itemPages){
                     for (DriveItem item : itemPage.getCurrentPage()){
-                        loggingResult(item);
+//                        loggingResult(item);
                         if(item.folder != null){ //폴더일 경우 넘긴다.
                             continue;
                         }
@@ -61,7 +61,7 @@ public class MsFileService {
 
                 for (DriveItemCollectionPage siteItem : siteItems){
                     for (DriveItem item : siteItem.getCurrentPage()){
-                        loggingResult(item);
+//                        loggingResult(item);
                         if(item.folder != null){ //폴더일 경우 넘긴다.
                             continue;
                         }

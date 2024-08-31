@@ -62,10 +62,6 @@ public class FileDownloadUtil {
     private static final String HASH_ALGORITHM = "SHA-256";
     private static final Path BASE_PATH = Paths.get("downloads");
 
-    private GraphServiceClient<Request> graphClient;
-
-
-
     @Async("threadPoolTaskExecutor")
     @Transactional
     public CompletableFuture<Void> processAndStoreFile(MsFileInfoDto file, OrgSaaS orgSaaSObject, int workspaceId, String event_type, GraphServiceClient graphClient) {
@@ -266,11 +262,11 @@ public class FileDownloadUtil {
 
         synchronized (this) {
             saveActivity(activity, file.getFile_name());
-            saveFileUpload(fileUploadTableObject, file.getFile_name());
+            saveFileUpload(fileUploadTableObject, file, filePath);
             saveStoredFile(storedFile, file.getFile_name());
         }
 
-        scanUtil.scanFile(file, fileUploadTableObject, filePath);
+
     }
 
     private void saveActivity(Activities activity, String file_name) {
@@ -286,12 +282,13 @@ public class FileDownloadUtil {
         }
     }
 
-    private void saveFileUpload(FileUploadTable fileUploadTableObject, String file_name) {
+    private void saveFileUpload(FileUploadTable fileUploadTableObject, MsFileInfoDto file_data, String file_path) {
         try {
             if (!fileUploadTableRepo.existsBySaasFileIdAndTimestamp(fileUploadTableObject.getSaasFileId(), fileUploadTableObject.getTimestamp())){
                 fileUploadTableRepo.save(fileUploadTableObject);
+                scanUtil.scanFile(file_data, fileUploadTableObject, file_path);
             } else {
-                log.warn("Duplicate file upload detected and ignored: {}", file_name);
+                log.warn("Duplicate file upload detected and ignored: {}", file_data.getFile_name());
             }
         } catch (DataIntegrityViolationException e) {
             log.error("Error saving file upload: {}", e.getMessage(), e);
@@ -337,7 +334,7 @@ public class FileDownloadUtil {
             pathParts.add("shared");
         }
         // /drive/root: 이렇게 나오는거 수정 필요
-        pathParts.add(file.getFile_owner_id());
+        pathParts.add(file.getFile_owner_name());
 
         // 해시값을 경로에 추가
         pathParts.add(hash);

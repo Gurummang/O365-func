@@ -134,9 +134,9 @@ public class MsApiService {
             log.info("Fetched {} SharePoint sites.", siteItems.getCurrentPage().size());
 
             // 각 사이트의 정보 로깅
-            siteItems.getCurrentPage().forEach(site ->
-                    log.info("Site ID: {}, Name: {}, URL: {}", site.id, site.displayName, site.webUrl)
-            );
+//            siteItems.getCurrentPage().forEach(site ->
+//                    log.info("Site ID: {}, Name: {}, URL: {}", site.id, site.displayName, site.webUrl)
+//            );
 
         } catch (GraphServiceException e) {
             log.error("GraphServiceException occurred while fetching SharePoint sites: {}", e.getMessage(), e);
@@ -165,11 +165,11 @@ public class MsApiService {
                             .get();
 
                     responses.add(driveItems);
-
-                    // 각 파일의 정보 로깅
-                    driveItems.getCurrentPage().forEach(file ->
-                            log.info("File ID: {}, Name: {}, Size: {}", file.id, file.name, file.size)
-                    );
+//
+//                    // 각 파일의 정보 로깅
+//                    driveItems.getCurrentPage().forEach(file ->
+//                            log.info("File ID: {}, Name: {}, Size: {}", file.id, file.name, file.size)
+//                    );
 
                 } catch (GraphServiceException e) {
                     log.error("GraphServiceException occurred while fetching files for site ID {}: {}", site.id, e.getMessage(), e);
