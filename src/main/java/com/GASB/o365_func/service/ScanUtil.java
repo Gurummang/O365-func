@@ -62,12 +62,9 @@ public class ScanUtil {
                     addData(fileUploadTableObject, isMatched, mimeType, fileSignature, fileExtension);
                 }
             }
-
-
-
-
         } catch (Exception e){
-            log.error("Error occurred while scanning file: {}", fileData.getFile_name(), e);
+            log.error("Error occurred while scanning file: {}", fileData.getFile_name());
+            log.error("Error message: {}", e.getMessage());
         }
     }
 
