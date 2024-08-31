@@ -33,9 +33,6 @@ public class MsBoardController {
 
     private final MsFileService msFileService;
     private final MsUserService msUserService;
-    private final FileUploadTableRepo fileUploadTableRepo;
-    private final StoredFileRepo storedFileRepo;
-    private final AdminUsersRepo adminUsersRepo;
     private final SaasRepo saasRepo;
 
 
