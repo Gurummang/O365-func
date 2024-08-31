@@ -6,18 +6,14 @@ import com.GASB.o365_func.model.mapper.MsFileMapper;
 import com.GASB.o365_func.repository.*;
 import com.GASB.o365_func.tlsh.Tlsh;
 import com.GASB.o365_func.tlsh.TlshCreator;
-import com.microsoft.graph.models.Drive;
-import com.microsoft.graph.models.Request;
 import com.microsoft.graph.requests.GraphServiceClient;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
@@ -33,7 +29,6 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 @Service

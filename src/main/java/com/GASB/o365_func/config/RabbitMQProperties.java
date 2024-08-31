@@ -23,4 +23,6 @@ public class RabbitMQProperties {
     private String grmScanRoutingKey;
     private String googleInitQueue;
     private String googledriveRoutingKey;
+    private String o365InitQueue;
+    private String o365RoutingKey;
 }

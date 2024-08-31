@@ -71,7 +71,7 @@ public class MsApiService {
     }
 
 
-    public GraphServiceClient createGraphClient(String email, int workspace_id){
+    public GraphServiceClient createGraphClient(int workspace_id){
         WorkspaceConfig workspaceConfig = workspaceConfigRepo.findById(workspace_id)
                 .orElseThrow(() -> new RuntimeException("Workspace not found for id: " + workspace_id));
 

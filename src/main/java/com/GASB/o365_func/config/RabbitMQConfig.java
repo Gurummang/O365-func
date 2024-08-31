@@ -46,6 +46,10 @@ public class RabbitMQConfig {
         return new Queue(properties.getGroupingQueue(),true, false,false);
     }
 
+    @Bean
+    public Queue O365InitQueue() {
+        return new Queue(properties.getO365InitQueue(), true, false, false);
+    }
     // 교환기 설정
     @Bean
     public DirectExchange exchange() {
@@ -78,6 +82,11 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(groupingQueue).to(exchange).with(properties.getGroupingRoutingKey());
     }
 
+    @Bean
+    public Binding O365InitBinding(Queue O365InitQueue, DirectExchange exchange) {
+        return BindingBuilder.bind(O365InitQueue).to(exchange).with(properties.getO365RoutingKey());
+    }
+
     // RabbitTemplate 설정
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
@@ -99,7 +108,7 @@ public class RabbitMQConfig {
     public RabbitTemplate initRabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
         rabbitTemplate.setExchange(properties.getExchange());
-        rabbitTemplate.setRoutingKey(properties.getGoogledriveRoutingKey());
+        rabbitTemplate.setRoutingKey(properties.getO365RoutingKey());
         return rabbitTemplate;
     }
 }

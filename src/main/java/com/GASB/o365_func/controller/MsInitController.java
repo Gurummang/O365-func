@@ -34,7 +34,7 @@ public class MsInitController {
         try {
             int workspace_id = requestTest.getWorkspace_id();
             String email = requestTest.getEmail();
-            msUserService.fetchAndSaveUser(email, workspace_id);
+            msUserService.fetchAndSaveUser(workspace_id);
             response.put("status", "success");
             response.put("message", "User saved successfully");
             return ResponseEntity.ok(response);
@@ -53,7 +53,7 @@ public class MsInitController {
         try {
             int workspace_id = requestTest.getWorkspace_id();
             String email = requestTest.getEmail();
-            msFileService.initFiles(email, workspace_id);
+            msFileService.initFiles(workspace_id);
             response.put("status", "success");
             response.put("message", "File lists saved successfully");
             return ResponseEntity.ok(response);
@@ -71,8 +71,8 @@ public class MsInitController {
         try {
             int workspace_id = requestTest.getWorkspace_id();
             String email = requestTest.getEmail();
-            msUserService.fetchAndSaveUser(email, workspace_id);
-            msFileService.initFiles(email, workspace_id);
+            msUserService.fetchAndSaveUser(workspace_id);
+            msFileService.initFiles(workspace_id);
             response.put("status", "success");
             response.put("message", "Data saved successfully");
             return ResponseEntity.ok(response);

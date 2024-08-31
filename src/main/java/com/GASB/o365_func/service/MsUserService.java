@@ -30,11 +30,11 @@ public class MsUserService {
 
 
     @Async("threadPoolTaskExecutor")
-    public CompletableFuture<Void> fetchAndSaveUser(String email, int workspaceId) {
+    public CompletableFuture<Void> fetchAndSaveUser(int workspaceId) {
         return CompletableFuture.runAsync(() -> {
             log.info("workspaceId : {}", workspaceId);
             try {
-                GraphServiceClient graphClient = msApiService.createGraphClient(email, workspaceId);
+                GraphServiceClient graphClient = msApiService.createGraphClient(workspaceId);
                 UserCollectionPage users = msApiService.fetchUsersList(graphClient);
                 log.info("orgSaaSId: {}", workspaceId);
 
