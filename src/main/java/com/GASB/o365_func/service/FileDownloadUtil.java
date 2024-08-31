@@ -164,9 +164,6 @@ public class FileDownloadUtil {
         log.info(tlsh.toString());
 
         LocalDateTime changeTime = extractChangeTime(event_type);
-
-
-//        String workspaceName = getWorkspaceName(workspaceId);
         String workspaceName = "O365 Test";
         String userId = file.getFile_owner_id();
         String uploadedUserName = file.getFile_owner_name();
@@ -244,15 +241,6 @@ public class FileDownloadUtil {
         }
         return changeTime;
     }
-
-    private String formatUploadedChannelPath(String orgName, String saasName, String workspaceName, String channelName, String uploadedUserName) {
-        return String.format("%s/%s/%s/%s/%s", orgName, saasName, workspaceName, channelName, uploadedUserName);
-    }
-
-    private String formatS3Key(String orgName, String saasName, String workspaceName, String channelName, String hash, String title) {
-        return String.format("%s/%s/%s/%s/%s/%s", orgName, saasName, workspaceName, channelName, hash, title);
-    }
-
     private void processAndSaveFileData(MsFileInfoDto file, String hash, String s3Key, OrgSaaS orgSaaSObject,
                                         LocalDateTime changeTime, String event_type, MonitoredUsers user,
                                         String uploadedChannelPath, String tlsh, String filePath) {
@@ -265,8 +253,6 @@ public class FileDownloadUtil {
             saveFileUpload(fileUploadTableObject, file, filePath);
             saveStoredFile(storedFile, file.getFile_name());
         }
-
-
     }
 
     private void saveActivity(Activities activity, String file_name) {
