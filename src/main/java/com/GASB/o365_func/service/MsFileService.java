@@ -40,11 +40,11 @@ public class MsFileService {
     private final ActivitiesRepo activitiesRepo;
 
     @Async("threadPoolTaskExecutor")
-    public CompletableFuture<Void> initFiles(String email, int workspaceId) {
+    public CompletableFuture<Void> initFiles(int workspaceId) {
         return CompletableFuture.runAsync(() -> {
             log.info("workspaceId : {}", workspaceId);
             try {
-                GraphServiceClient graphClient = msApiService.createGraphClient(email,workspaceId);
+                GraphServiceClient graphClient = msApiService.createGraphClient(workspaceId);
                 List<DriveItemCollectionPage> itemPages = msApiService.fetchFileLists(graphClient);
                 List<DriveItemCollectionPage> siteItems = msApiService.fetchFileListsInSite(graphClient, msApiService.fetchSiteLists(graphClient));
                 OrgSaaS orgSaaSObject = orgSaaSRepo.findById(workspaceId).orElse(null);
