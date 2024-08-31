@@ -273,7 +273,7 @@ public class FileDownloadUtil {
         try {
             if (!activitiesRepo.existsBySaasFileIdAndEventTs(activity.getSaasFileId(), activity.getEventTs())) {
                 activitiesRepo.save(activity);
-//                messageSender.sendGroupingMessage(activity.getId());
+                messageSender.sendGroupingMessage(activity.getId());
             } else {
                 log.warn("Duplicate activity detected and ignored: {}", file_name);
             }
@@ -300,7 +300,7 @@ public class FileDownloadUtil {
             if (!storedFileRepo.existsBySaltedHash(storedFile.getSaltedHash())) {
                 try {
                     storedFileRepo.save(storedFile);
-//                    messageSender.sendMessage(storedFile.getId());
+                    messageSender.sendMessage(storedFile.getId());
                     log.info("File uploaded successfully: {}", file_name);
                 } catch (DataIntegrityViolationException e) {
                     log.warn("Duplicate entry detected and ignored: {}", file_name);
