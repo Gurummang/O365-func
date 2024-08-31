@@ -40,33 +40,31 @@ public class MsApiService {
     private final MonitoredUsersRepo monitoredUsersRepo;
     private final SimpleAuthProvider simpleAuthProvider;
     private final WorkSpaceConfigRepo workspaceConfigRepo;
-
-    private final GraphServiceClient graphClient;
     @Autowired
-    public MsApiService(MonitoredUsersRepo monitoredUsersRepo, SimpleAuthProvider simpleAuthProvider, WorkSpaceConfigRepo workspaceConfigRepo,
-                        @Value("${onedrive.client.id}") String clientId,
+    public MsApiService(MonitoredUsersRepo monitoredUsersRepo, SimpleAuthProvider simpleAuthProvider, WorkSpaceConfigRepo workspaceConfigRepo
+                        /*@Value("${onedrive.client.id}") String clientId,
                         @Value("${onedrive.client.secret}") String clientSecret,
-                        @Value("${onedrive.tenant.id}") String tenantId) {
+                        @Value("${onedrive.tenant.id}") String tenantId*/) {
         this.simpleAuthProvider = simpleAuthProvider;
         this.monitoredUsersRepo = monitoredUsersRepo;
         this.workspaceConfigRepo = workspaceConfigRepo;
 
-        // ClientSecretCredential을 사용하여 자격 증명 생성
-        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
-                .clientId(clientId)
-                .clientSecret(clientSecret)
-                .tenantId(tenantId)
-                .build();
-
-        TokenCredentialAuthProvider tokenCredentialAuthProvider = new TokenCredentialAuthProvider(Collections.singletonList(SCOPES), clientSecretCredential);
-        TokenRequestContext requestContext = new TokenRequestContext().addScopes(SCOPES);
-
-        accessToken = Objects.requireNonNull(clientSecretCredential.getToken(requestContext).block()).getToken();
-        log.info("Access token: {}", accessToken);
-        this.graphClient = GraphServiceClient
-                .builder()
-                .authenticationProvider(tokenCredentialAuthProvider)
-                .buildClient();
+//        // ClientSecretCredential을 사용하여 자격 증명 생성
+//        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
+//                .clientId(clientId)
+//                .clientSecret(clientSecret)
+//                .tenantId(tenantId)
+//                .build();
+//
+//        TokenCredentialAuthProvider tokenCredentialAuthProvider = new TokenCredentialAuthProvider(Collections.singletonList(SCOPES), clientSecretCredential);
+//        TokenRequestContext requestContext = new TokenRequestContext().addScopes(SCOPES);
+//
+//        accessToken = Objects.requireNonNull(clientSecretCredential.getToken(requestContext).block()).getToken();
+//        log.info("Access token: {}", accessToken);
+//        this.graphClient = GraphServiceClient
+//                .builder()
+//                .authenticationProvider(tokenCredentialAuthProvider)
+//                .buildClient();
 
     }
 
@@ -179,11 +177,5 @@ public class MsApiService {
             }
         }
         return responses;
-    }
-
-
-    public String getAccessToken(){
-        log.info("Access Token: {}", this.accessToken); // 액세스 토큰을 로그로 출력
-        return accessToken;
     }
 }
