@@ -101,16 +101,32 @@ public class FileDownloadUtil {
 
     private byte[] downloadFileWithSDK(String dirPath, MsFileInfoDto file, GraphServiceClient graphClient) {
         try {
-            InputStream inputStream = graphClient.users(file.getFile_owner_id())
-                    .drive()
-                    .items(file.getFile_id())
-                    .content()
-                    .buildRequest()
-                    .get();
+            InputStream inputStream;
 
-            //바이트 배열로 변환
+            // 원드라이브 파일인 경우
+            if (file.isOneDrive()) {
+                inputStream = graphClient.users(file.getFile_owner_id())
+                        .drive()
+                        .items(file.getFile_id())
+                        .content()
+                        .buildRequest()
+                        .get();
+
+                // 쉐어포인트 파일인 경우
+            } else if (!file.isOneDrive()) {
+                inputStream = graphClient.sites(file.getSite_id())  // 쉐어포인트 사이트 ID 사용
+                        .drive()
+                        .items(file.getFile_id())
+                        .content()
+                        .buildRequest()
+                        .get();
+            } else {
+                throw new IllegalArgumentException("Unsupported file source.");
+            }
+
+            // 바이트 배열로 변환
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            byte[]  buffer = new byte[8192];
+            byte[] buffer = new byte[8192];
             int bytesRead;
             while ((bytesRead = inputStream.read(buffer)) != -1) {
                 outputStream.write(buffer, 0, bytesRead);
@@ -120,11 +136,12 @@ public class FileDownloadUtil {
             Path filePath = Paths.get(dirPath, file.getFile_name());
             File targetFile = filePath.toFile();
 
-            if(!targetFile.getParentFile().exists()){
+            // 디렉토리가 존재하지 않으면 생성
+            if (!targetFile.getParentFile().exists()) {
                 targetFile.getParentFile().mkdirs();
             }
 
-            //파일 다운로드
+            // 파일 저장
             try (FileOutputStream fileOutputStream = new FileOutputStream(targetFile)) {
                 fileOutputStream.write(fileData);
             }
@@ -136,6 +153,7 @@ public class FileDownloadUtil {
             throw new RuntimeException("Error downloading file", e);
         }
     }
+
 
 
 

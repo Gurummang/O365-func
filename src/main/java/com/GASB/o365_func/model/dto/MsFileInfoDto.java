@@ -24,4 +24,6 @@ public class MsFileInfoDto {
     public LocalDateTime file_created_time;
     public String file_path;
     public boolean isShared = false;
+    public String site_id = null;
+    public boolean isOneDrive = false;
 }

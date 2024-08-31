@@ -65,6 +65,22 @@ public class MsInitController {
         }
     }
 
-
-
+    @PostMapping("/all")
+    public ResponseEntity<Map<String,String>> fetchData(@RequestBody RequestTest requestTest){
+        Map<String, String> response = new HashMap<>();
+        try {
+            int workspace_id = requestTest.getWorkspace_id();
+            String email = requestTest.getEmail();
+            msUserService.fetchAndSaveUser(email, workspace_id);
+            msFileService.initFiles(email, workspace_id);
+            response.put("status", "success");
+            response.put("message", "Data saved successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error fetching data", e);
+            response.put("status", "error");
+            response.put("message", "Error fetching data" + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
 }

@@ -31,8 +31,7 @@ public class MsFileMapper {
 
     private final MonitoredUsersRepo monitoredUsersRepo;
 
-
-    public MsFileInfoDto toEntity(DriveItem item){
+    public MsFileInfoDto toOneDriveEntity(DriveItem item){
         return MsFileInfoDto.builder()
                 .file_id(item.id)
                 .file_name(item.name)
@@ -43,6 +42,21 @@ public class MsFileMapper {
                 .file_owner_name(item.createdBy.user.displayName)
                 .file_created_time(Objects.requireNonNull(item.createdDateTime).toLocalDateTime().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("Asia/Seoul")).toLocalDateTime())
                 .file_path(Objects.requireNonNull(item.parentReference).path)
+                .isOneDrive(true)
+                .build();
+    }
+    public MsFileInfoDto toSharePointEntity(DriveItem item){
+        return MsFileInfoDto.builder()
+                .file_id(item.id)
+                .file_name(item.name)
+                .file_type(item.file.mimeType) //이거는 mimeType이라서 좀 수정할 필요있음
+                .file_download_url(item.additionalDataManager().get("@microsoft.graph.downloadUrl").toString())
+                .file_size(item.size)
+                .file_owner_id(item.createdBy.user.id)
+                .file_owner_name(item.createdBy.user.displayName)
+                .file_created_time(Objects.requireNonNull(item.createdDateTime).toLocalDateTime().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("Asia/Seoul")).toLocalDateTime())
+                .file_path(Objects.requireNonNull(item.parentReference).path)
+                .site_id(item.parentReference.siteId)
                 .build();
     }
     public StoredFile toStoredFileEntity(MsFileInfoDto file, String hash, String filePath) {
