@@ -35,7 +35,7 @@ public class ScanUtil {
             String fileExtension = extractFileExtensionByFileName(fileData.getFile_name());
             String expectedFileTypeByExtension = MimeType.getMimeTypeByExtension(fileExtension);
 
-            String mimeType = fileData.getFile_type();
+            String mimeType = fileData.getFile_mimetype();
 
             String fileSignature = null;
 
