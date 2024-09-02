@@ -55,7 +55,7 @@ public class MsBoardController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
             }
             String email = (String) servletRequest.getAttribute("email");
-            int orgId = adminUsersRepo.findByEmail(email).get().getOrg().getId();
+            int orgId = adminUsersRepo.findByEmail(email);;
             MsFileSizeDto msFileSizeDto = msFileService.sumOfMsFileSize(orgId,3);
             return ResponseEntity.ok(msFileSizeDto);
         } catch (Exception e){
@@ -80,7 +80,7 @@ public class MsBoardController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
             }
             String email = (String) servletRequest.getAttribute("email");
-            int orgId = adminUsersRepo.findByEmail(email).get().getOrg().getId();
+            int orgId = adminUsersRepo.findByEmail(email);
             MsFileCountDto msFileCountDto = msFileService.MsFileCountSum(orgId,3);
             return ResponseEntity.ok(msFileCountDto);
         } catch (Exception e) {
@@ -105,7 +105,7 @@ public class MsBoardController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
             }
             String email = (String) servletRequest.getAttribute("email");
-            int orgId = adminUsersRepo.findByEmail(email).get().getOrg().getId();
+            int orgId = adminUsersRepo.findByEmail(email);
             Saas saasObjcet = saasRepo.findById(3).orElse(null);
 //            Saas saasObject = saasRepo.findBySaasName("o365").orElse(null);
             List<MsRecentFileDTO> recentFiles = msFileService.msRecentFiles(orgId, saasObjcet.getId().intValue());
@@ -132,7 +132,7 @@ public class MsBoardController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
             }
             String email = (String) servletRequest.getAttribute("email");
-            int orgId = adminUsersRepo.findByEmail(email).get().getOrg().getId();
+            int orgId = adminUsersRepo.findByEmail(email);
             Saas saasObjcet = saasRepo.findById(3).orElse(null);
 //            Saas saasObject = saasRepo.findBySaasName("o365").orElse(null);
             CompletableFuture<List<TopUserDTO>> future = msUserService.getTopUsersAsync(orgId, saasObjcet.getId().intValue());
