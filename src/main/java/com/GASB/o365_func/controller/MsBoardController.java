@@ -49,7 +49,7 @@ public class MsBoardController {
             if (servletRequest.getAttribute("error") != null) {
                 String errorMessage = (String) servletRequest.getAttribute("error");
                 Map<String, String> errorResponse = new HashMap<>();
-                log.error("Error fetching user ranking in user-ranking api: {}", errorMessage);
+                log.error("Error fetching file size: {}", errorMessage);
                 errorResponse.put("status", "401");
                 errorResponse.put("error_message", errorMessage);
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
@@ -59,7 +59,8 @@ public class MsBoardController {
             MsFileSizeDto msFileSizeDto = msFileService.sumOfMsFileSize(orgId,3);
             return ResponseEntity.ok(msFileSizeDto);
         } catch (Exception e){
-            log.error("Error fetching file size", e);
+            log.error("Error fetching file size");
+            log.error("Error Message : {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new MsFileSizeDto(0,0,0));
         }
@@ -73,7 +74,7 @@ public class MsBoardController {
             if (servletRequest.getAttribute("error") != null) {
                 String errorMessage = (String) servletRequest.getAttribute("error");
                 Map<String, String> errorResponse = new HashMap<>();
-                log.error("Error fetching user ranking in user-ranking api: {}", errorMessage);
+                log.error("Error fetching file count : {}", errorMessage);
                 errorResponse.put("status", "401");
                 errorResponse.put("error_message", errorMessage);
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
@@ -83,7 +84,8 @@ public class MsBoardController {
             MsFileCountDto msFileCountDto = msFileService.MsFileCountSum(orgId,3);
             return ResponseEntity.ok(msFileCountDto);
         } catch (Exception e) {
-            log.error("Error fetching file count", e);
+            log.error("Error fetching file count");
+            log.error("error_message : {} ", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new MsFileCountDto(0,0,0,0));
         }
@@ -97,7 +99,7 @@ public class MsBoardController {
             if (servletRequest.getAttribute("error") != null) {
                 String errorMessage = (String) servletRequest.getAttribute("error");
                 Map<String, String> errorResponse = new HashMap<>();
-                log.error("Error fetching user ranking in user-ranking api: {}", errorMessage);
+                log.error("Error fetching recent file api: {}", errorMessage);
                 errorResponse.put("status", "401");
                 errorResponse.put("error_message", errorMessage);
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
@@ -109,7 +111,8 @@ public class MsBoardController {
             List<MsRecentFileDTO> recentFiles = msFileService.msRecentFiles(orgId, saasObjcet.getId().intValue());
             return ResponseEntity.ok(recentFiles);
         } catch (Exception e){
-            log.error("Error fetching recent files", e);
+            log.error("Error fetching recent files");
+            log.error("error_message : {} ", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Collections.singletonList(new MsRecentFileDTO("Error", "Server Error", "N/A", LocalDateTime.now())));
         }
@@ -136,7 +139,8 @@ public class MsBoardController {
             List<TopUserDTO> topuser = future.get();
             return ResponseEntity.ok(topuser);
         } catch (Exception e) {
-            log.error("Error fetching user ranking", e);
+            log.error("Error fetching user ranking");
+            log.error("error_message : {}",e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Collections.singletonList(new MsRecentFileDTO("Error", "Server Error", "N/A", LocalDateTime.now())));
         }
