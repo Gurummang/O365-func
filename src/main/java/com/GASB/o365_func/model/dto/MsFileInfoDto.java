@@ -17,6 +17,7 @@ public class MsFileInfoDto {
     public String file_id;
     public String file_name;
     public String file_type;
+    public String file_mimetype;
     public String file_download_url;
     public Long file_size;
     public String file_owner_id;

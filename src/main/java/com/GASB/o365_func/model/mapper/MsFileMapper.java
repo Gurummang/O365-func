@@ -37,7 +37,8 @@ public class MsFileMapper {
         return MsFileInfoDto.builder()
                 .file_id(item.id)
                 .file_name(item.name)
-                .file_type(MimeType.getExtensionByMimeType(item.file.mimeType)) //이거는 mimeType이라서 좀 수정할 필요있음
+                .file_type(MimeType.getExtensionByMimeType(item.file.mimeType))
+                .file_mimetype(item.file.mimeType)
                 .file_download_url(item.additionalDataManager().get("@microsoft.graph.downloadUrl").toString())
                 .file_size(item.size)
                 .file_owner_id(Objects.requireNonNull(Objects.requireNonNull(item.createdBy).user).id)
@@ -52,6 +53,7 @@ public class MsFileMapper {
                 .file_id(item.id)
                 .file_name(item.name)
                 .file_type(MimeType.getExtensionByMimeType(item.file.mimeType)) //이거는 mimeType이라서 좀 수정할 필요있음
+                .file_mimetype(item.file.mimeType)
                 .file_download_url(item.additionalDataManager().get("@microsoft.graph.downloadUrl").toString())
                 .file_size(item.size)
                 .file_owner_id(Objects.requireNonNull(Objects.requireNonNull(item.createdBy).user).id)
