@@ -1,52 +1,74 @@
 package com.GASB.o365_func.service;
 
+import com.GASB.o365_func.repository.MonitoredUsersRepo;
 import com.GASB.o365_func.repository.WorkSpaceConfigRepo;
-import com.nimbusds.jwt.JWT;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
+import com.GASB.o365_func.service.api_call.MsApiService;
+import com.microsoft.graph.models.Request;
+import com.microsoft.graph.models.Subscription;
+import com.microsoft.graph.requests.GraphServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.security.Key;
-import java.util.Date;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class WebhookUtil {
 
-    @Value("{jwt.secret}")
-    private String JWT_SECRET;
+
 
     private final WorkSpaceConfigRepo workSpaceConfigRepo;
+    private final MsApiService msApiService;
+    private final MonitoredUsersRepo monitoredUsersRepo;
 
+    @Value("${webhook.url}")
+    private String webhookUrl;
 
-    // 토큰을 가져오는 부분
-    private String getToken(int id) {
-        try {
-            return workSpaceConfigRepo.findTokenById(id).orElse(null);
-        } catch (Exception e) {
-            log.error("Error while fetching token from db", e);
-            return null;
-        }
+    private GraphServiceClient getClient(int id){
+        return msApiService.createGraphClient(id);
     }
 
     // 구독을 생성하는 부분
-    private void createSubscription(int id) {
-        String token = getToken(id);
-        if (token == null) {
-            log.error("Token is null");
-            return;
-        }
-        if (!tokenValidation(token)) {
-            log.error("Token is invalid");
-            return;
-        }
-        // 구독 생성 로직
+    public CompletableFuture<Void> createSubscriptionAsync(GraphServiceClient<Request> graphClient, String userId) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                Subscription subscription = new Subscription();
+                subscription.changeType = "updated,deleted";
+                subscription.notificationUrl = webhookUrl;
+                subscription.resource = "/users/" + userId + "/drive/root";
+                subscription.expirationDateTime = OffsetDateTime.now().plusMinutes(4230);  // 최대 구독 만료 시간 설정
+                subscription.clientState = generateClientState();
+
+                Subscription createdSubscription = graphClient.subscriptions()
+                        .buildRequest()
+                        .post(subscription);
+
+                log.info("Created subscription for user {}: {}", userId, createdSubscription.id);
+
+            } catch (Exception e) {
+                log.error("Failed to create subscription for user {}: {}", userId, e.getMessage());
+            }
+        });
     }
+
+    public void createSubscriptionsForAllUsers(GraphServiceClient<Request> graphClient, int id) {
+        List<String> userIds = monitoredUsersRepo.getMonitoredUserList(id);
+        List<CompletableFuture<Void>> futures = userIds.stream()
+                .map(userId -> createSubscriptionAsync(graphClient, userId))
+                .toList();
+
+        // 모든 작업이 완료될 때까지 기다림
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+    }
+
 
     // 구독을 삭제하는 부분
 
@@ -54,27 +76,36 @@ public class WebhookUtil {
 
     // 델타 api를 이용해 변경된 파일을 가져오는 부분
 
-    //토큰 검증하는 부분
-    private boolean tokenValidation(String token) {
-        // o365는 토큰이 jwt형식이다, jwt를 검증하는 로직을 작성해야한다.
-        Claims claims = extractAllClaims(token);
-        Date exp = claims.getExpiration();
 
-        if (exp.before(new Date())) {
-            log.error("Token is expired");
-            // 갱신 코드 추가
-            return false;
-        }
-        return true;
+    // 구독 자동 갱신
+//    @Scheduled(fixedRate = 172800000) // 1시간마다 실행
+//    public void renewSubscriptions() {
+//        List<String> userIds = monitoredUsersRepo.getMonitoredUserList();
+//
+//        userIds.forEach(userId -> {
+//            try {
+//                // 기존 구독 ID 가져오기 로직 필요
+//                String subscriptionId = monitoredUsersRepo.getSubscriptionId(userId);
+//
+//                // 구독 갱신
+//                Subscription subscription = new Subscription();
+//                subscription.expirationDateTime = OffsetDateTime.now().plusMinutes(4230);  // 최대 구독 시간
+//
+//                GraphServiceClient<Request> graphClient = getClient(id);
+//                graphClient.subscriptions(subscriptionId)
+//                        .buildRequest()
+//                        .patch(subscription);
+//
+//                log.info("Renewed subscription for user {}: {}", userId, subscriptionId);
+//
+//            } catch (Exception e) {
+//                log.error("Failed to renew subscription for user {}: {}", userId, e.getMessage());
+//            }
+//        });
+//    }
+
+    public String generateClientState() {
+        return UUID.randomUUID().toString();
     }
 
-    // 토큰을 파싱하는 부분
-    public Claims extractAllClaims(String token) {
-        Key key = Keys.hmacShaKeyFor(JWT_SECRET.getBytes());
-        return Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-    }
 }
