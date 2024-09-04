@@ -17,6 +17,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -29,20 +30,14 @@ public class WebhookUtil {
     private final MsApiService msApiService;
     private final MonitoredUsersRepo monitoredUsersRepo;
 
-    @Value("${webhook.url}")
-    private String webhookUrl;
-
-    private GraphServiceClient getClient(int id){
-        return msApiService.createGraphClient(id);
-    }
 
     // 구독을 생성하는 부분
-    public CompletableFuture<Void> createSubscriptionAsync(GraphServiceClient<Request> graphClient, String userId) {
+    public CompletableFuture<Void> createSubscriptionAsync(GraphServiceClient<?> graphClient, String userId, int workspaceId) {
         return CompletableFuture.runAsync(() -> {
             try {
                 Subscription subscription = new Subscription();
-                subscription.changeType = "updated,deleted";
-                subscription.notificationUrl = webhookUrl;
+                subscription.changeType = "updated";
+                subscription.notificationUrl = workSpaceConfigRepo.findWebhookUrlById(workspaceId).orElse(null);
                 subscription.resource = "/users/" + userId + "/drive/root";
                 subscription.expirationDateTime = OffsetDateTime.now().plusMinutes(4230);  // 최대 구독 만료 시간 설정
                 subscription.clientState = generateClientState();
@@ -59,10 +54,14 @@ public class WebhookUtil {
         });
     }
 
-    public void createSubscriptionsForAllUsers(GraphServiceClient<Request> graphClient, int id) {
+    public void createSubscriptionsForAllUsers(int id) {
         List<String> userIds = monitoredUsersRepo.getMonitoredUserList(id);
+
+        GraphServiceClient<?> graphClient = msApiService.createGraphClient(id);
+
+        // 명시적으로 List<CompletableFuture<Void>>로 타입을 지정
         List<CompletableFuture<Void>> futures = userIds.stream()
-                .map(userId -> createSubscriptionAsync(graphClient, userId))
+                .map(userId -> createSubscriptionAsync(graphClient, userId,id))
                 .toList();
 
         // 모든 작업이 완료될 때까지 기다림
@@ -104,7 +103,7 @@ public class WebhookUtil {
 //        });
 //    }
 
-    public String generateClientState() {
+    private String generateClientState() {
         return UUID.randomUUID().toString();
     }
 
