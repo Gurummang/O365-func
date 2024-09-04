@@ -15,6 +15,9 @@ import com.microsoft.graph.requests.GraphServiceClient;
 import com.microsoft.graph.requests.DriveItemCollectionPage;
 import com.microsoft.graph.requests.SiteCollectionPage;
 import com.microsoft.graph.requests.UserCollectionPage;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tomcat.jni.FileInfo;
@@ -24,10 +27,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.security.Key;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -37,6 +38,10 @@ public class MsApiService {
     // 흠 굳이 토큰값을 저장할 필요없이 주입받는게 나으려나?
     private String accessToken;
     private static final String SCOPES = "https://graph.microsoft.com/.default";
+
+    @Value("{jwt.secret}")
+    private String JWT_SECRET;
+
     private final MonitoredUsersRepo monitoredUsersRepo;
     private final SimpleAuthProvider simpleAuthProvider;
     private final WorkSpaceConfigRepo workspaceConfigRepo;
@@ -74,12 +79,21 @@ public class MsApiService {
                 .orElseThrow(() -> new RuntimeException("Workspace not found for id: " + workspace_id));
 
         String token = workspaceConfig.getToken();
+        if (token == null) {
+            log.error("Token is null");
+            return null;
+        }
+        if (!tokenValidation(token)) {
+            log.error("Token is invalid");
+            return null;
+        }
         simpleAuthProvider.setAccessToken(token);
         return GraphServiceClient
                 .builder()
                 .authenticationProvider(simpleAuthProvider)
                 .buildClient();
     }
+
 
     public UserCollectionPage fetchUsersList(GraphServiceClient graphClient){
         return graphClient.users()
@@ -177,5 +191,28 @@ public class MsApiService {
             }
         }
         return responses;
+    }
+
+    //토큰 검증하는 부분
+    private boolean tokenValidation(String token) {
+        // o365는 토큰이 jwt형식이다, jwt를 검증하는 로직을 작성해야한다.
+        Claims claims = extractAllClaims(token);
+        Date exp = claims.getExpiration();
+        if (exp.before(new Date())) {
+            log.error("Token is expired");
+            // 갱신 코드 추가
+            return false;
+        }
+        return true;
+    }
+
+    // 토큰을 파싱하는 부분
+    public Claims extractAllClaims(String token) {
+        Key key = Keys.hmacShaKeyFor(JWT_SECRET.getBytes());
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
 }
