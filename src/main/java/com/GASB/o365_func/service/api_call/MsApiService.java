@@ -75,10 +75,7 @@ public class MsApiService {
 
 
     public GraphServiceClient createGraphClient(int workspace_id){
-        WorkspaceConfig workspaceConfig = workspaceConfigRepo.findById(workspace_id)
-                .orElseThrow(() -> new RuntimeException("Workspace not found for id: " + workspace_id));
-
-        String token = workspaceConfig.getToken();
+        String token = workspaceConfigRepo.findTokenById(workspace_id).orElse(null);
         if (token == null) {
             log.error("Token is null");
             return null;
