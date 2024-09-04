@@ -19,4 +19,7 @@ public interface WorkSpaceConfigRepo extends JpaRepository<WorkspaceConfig, Stri
     String findByWorkSpaceId(@Param("id")int id);
     boolean existsById(int id);
     List<WorkspaceConfig> findByIdIn(List<Integer> configIds);
+
+    @Query("SELECT config.token FROM WorkspaceConfig config WHERE config.id = :id")
+    Optional<String> findTokenById(@Param("id")int id);
 }
