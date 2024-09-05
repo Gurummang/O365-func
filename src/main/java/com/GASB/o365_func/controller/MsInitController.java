@@ -3,6 +3,7 @@ package com.GASB.o365_func.controller;
 
 import com.GASB.o365_func.controller.Request.RequestTest;
 import com.GASB.o365_func.service.MsFileService;
+import com.GASB.o365_func.service.WebhookUtil;
 import com.GASB.o365_func.service.api_call.MsApiService;
 import com.GASB.o365_func.service.MsUserService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class MsInitController {
     private final MsApiService msApiService;
     private final MsUserService msUserService;
     private final MsFileService msFileService;
+    private final WebhookUtil webhookUtil;
 
 
     //테스트용
@@ -61,6 +63,23 @@ public class MsInitController {
             log.error("Error fetching file lists", e);
             response.put("status", "error");
             response.put("message", "Error fetching file lists" + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    @GetMapping("/test/webhook")
+    public ResponseEntity<Map<String,String>> testWebhook(){
+        Map<String, String> response = new HashMap<>();
+        try {
+            msApiService.createGraphClient(174);
+            webhookUtil.createSubscriptionsForAllUsers(174);
+            response.put("status", "success");
+            response.put("message", "Webhook test success");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error testing webhook", e);
+            response.put("status", "error");
+            response.put("message", "Error testing webhook" + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }

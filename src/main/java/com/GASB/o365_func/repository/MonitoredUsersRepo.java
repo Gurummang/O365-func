@@ -19,6 +19,8 @@ public interface MonitoredUsersRepo extends JpaRepository<MonitoredUsers, Long> 
     @Query("SELECT EXISTS(SELECT 1 FROM MonitoredUsers u WHERE u.userId = :userId AND u.orgSaaS.id = :orgSaaSId)")
     boolean existsByUserId(@Param("userId") String userId, @Param("orgSaaSId") int orgSaaSId);
 
+    @Query("SELECT u.userId FROM MonitoredUsers u WHERE u.orgSaaS.id = :orgSaaSId")
+    List<String> getMonitoredUserList(@Param("orgSaaSId") int orgSaaSId);
 
     @Query(nativeQuery = true, value =
             "SELECT " +

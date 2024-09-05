@@ -3,18 +3,23 @@ package com.GASB.o365_func.service.api_call;
 import com.GASB.o365_func.model.entity.WorkspaceConfig;
 import com.GASB.o365_func.repository.MonitoredUsersRepo;
 import com.GASB.o365_func.repository.WorkSpaceConfigRepo;
+import com.GASB.o365_func.service.JwtDecoder;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
 import com.microsoft.graph.http.GraphServiceException;
 import com.microsoft.graph.models.DriveItem;
+import com.microsoft.graph.models.Request;
 import com.microsoft.graph.models.Site;
 import com.microsoft.graph.models.User;
 import com.microsoft.graph.requests.GraphServiceClient;
 import com.microsoft.graph.requests.DriveItemCollectionPage;
 import com.microsoft.graph.requests.SiteCollectionPage;
 import com.microsoft.graph.requests.UserCollectionPage;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tomcat.jni.FileInfo;
@@ -24,10 +29,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.nio.charset.StandardCharsets;
+import java.security.Key;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -37,6 +41,10 @@ public class MsApiService {
     // 흠 굳이 토큰값을 저장할 필요없이 주입받는게 나으려나?
     private String accessToken;
     private static final String SCOPES = "https://graph.microsoft.com/.default";
+
+    @Value("{jwt.secret}")
+    private String JWT_SECRET;
+
     private final MonitoredUsersRepo monitoredUsersRepo;
     private final SimpleAuthProvider simpleAuthProvider;
     private final WorkSpaceConfigRepo workspaceConfigRepo;
@@ -48,7 +56,6 @@ public class MsApiService {
         this.simpleAuthProvider = simpleAuthProvider;
         this.monitoredUsersRepo = monitoredUsersRepo;
         this.workspaceConfigRepo = workspaceConfigRepo;
-
 //        // ClientSecretCredential을 사용하여 자격 증명 생성
 //        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
 //                .clientId(clientId)
@@ -69,17 +76,23 @@ public class MsApiService {
     }
 
 
-    public GraphServiceClient createGraphClient(int workspace_id){
-        WorkspaceConfig workspaceConfig = workspaceConfigRepo.findById(workspace_id)
-                .orElseThrow(() -> new RuntimeException("Workspace not found for id: " + workspace_id));
-
-        String token = workspaceConfig.getToken();
+    public GraphServiceClient<?> createGraphClient(int workspace_id){
+        String token = workspaceConfigRepo.findTokenById(workspace_id).orElse(null);
+        if (token == null) {
+            log.error("Token is null");
+            return null;
+        }
+        if (!tokenValidation(token)) {
+            log.error("Token is Expired");
+            return null;
+        }
         simpleAuthProvider.setAccessToken(token);
         return GraphServiceClient
                 .builder()
                 .authenticationProvider(simpleAuthProvider)
                 .buildClient();
     }
+
 
     public UserCollectionPage fetchUsersList(GraphServiceClient graphClient){
         return graphClient.users()
@@ -177,5 +190,24 @@ public class MsApiService {
             }
         }
         return responses;
+    }
+
+    //토큰 검증하는 부분
+    private boolean tokenValidation(String token) {
+        // o365는 토큰이 JWT 형식이다, JWT를 검증하는 로직을 작성해야 한다.
+        String decodedPayload = JwtDecoder.decodeJwtPayload(token);
+        Date expDate = JwtDecoder.getExpDate(token); // 페이로드가 아닌 전체 JWT를 전달
+        log.info("Decoded payload: {}", decodedPayload);
+
+        // 토큰 만료일이 현재 시간보다 이전이면 false
+        if (expDate.before(new Date())) {
+            log.error("Token is expired");
+            return false;
+        }
+
+        // 추가적인 검증 로직이 필요하다면 여기에 추가
+        // 예: 서명 검증, issuer 검증 등
+
+        return true;
     }
 }
