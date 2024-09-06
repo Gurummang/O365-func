@@ -3,7 +3,7 @@ package com.GASB.o365_func.controller;
 
 import com.GASB.o365_func.controller.Request.RequestTest;
 import com.GASB.o365_func.service.MsFileService;
-import com.GASB.o365_func.service.WebhookUtil;
+import com.GASB.o365_func.service.util.WebhookUtil;
 import com.GASB.o365_func.service.api_call.MsApiService;
 import com.GASB.o365_func.service.MsUserService;
 import lombok.RequiredArgsConstructor;

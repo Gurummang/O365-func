@@ -11,11 +11,10 @@ import com.GASB.o365_func.repository.FileUploadTableRepo;
 import com.GASB.o365_func.repository.OrgSaaSRepo;
 import com.GASB.o365_func.repository.StoredFileRepo;
 import com.GASB.o365_func.service.api_call.MsApiService;
-import com.microsoft.graph.models.Drive;
+import com.GASB.o365_func.service.util.FileDownloadUtil;
 import com.microsoft.graph.models.DriveItem;
 import com.microsoft.graph.requests.DriveItemCollectionPage;
 import com.microsoft.graph.requests.GraphServiceClient;
-import com.microsoft.graph.requests.SiteCollectionPage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -80,20 +79,8 @@ public class MsFileService {
         });
     }
 
-    private void loggingResult(DriveItem item) {
-        log.info("------------------------------");
-        log.info("ID: {}", item.id);
-        log.info("Name: {}", item.name);
-        log.info("Created DateTime: {}", item.createdDateTime);
-        log.info("Last Modified DateTime: {}", item.lastModifiedDateTime);
-        log.info("Web URL: {}", item.webUrl);
-        log.info("Download URL: {}", item.additionalDataManager().get("@microsoft.graph.downloadUrl"));
-        log.info("Created By: {}", (item.createdBy != null && item.createdBy.user != null ? item.createdBy.user.displayName : "N/A"));
-        log.info("Created User ID: {}", (item.createdBy != null && item.createdBy.user != null ? item.createdBy.user.id : "N/A"));
-        log.info("Size: {}", item.size);
-        log.info("file_path : {}", Objects.requireNonNull(item.parentReference).path);
-        log.info("------------------------------");
-    }
+
+
 
     public List<MsRecentFileDTO> msRecentFiles(int orgId, int saasId) {
         try {
