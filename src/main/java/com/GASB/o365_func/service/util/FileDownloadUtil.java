@@ -1,9 +1,10 @@
-package com.GASB.o365_func.service;
+package com.GASB.o365_func.service.util;
 
 import com.GASB.o365_func.model.dto.MsFileInfoDto;
 import com.GASB.o365_func.model.entity.*;
 import com.GASB.o365_func.model.mapper.MsFileMapper;
 import com.GASB.o365_func.repository.*;
+import com.GASB.o365_func.service.message.MessageSender;
 import com.GASB.o365_func.tlsh.Tlsh;
 import com.GASB.o365_func.tlsh.TlshCreator;
 import com.microsoft.graph.requests.GraphServiceClient;

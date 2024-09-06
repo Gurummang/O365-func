@@ -1,4 +1,4 @@
-package com.GASB.o365_func.service;
+package com.GASB.o365_func.service.message;
 
 
 import com.GASB.o365_func.config.RabbitMQProperties;
