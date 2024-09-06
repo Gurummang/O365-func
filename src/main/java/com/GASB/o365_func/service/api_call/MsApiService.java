@@ -1,36 +1,22 @@
 package com.GASB.o365_func.service.api_call;
 
-import com.GASB.o365_func.model.entity.WorkspaceConfig;
+import com.GASB.o365_func.model.entity.MonitoredUsers;
+import com.GASB.o365_func.model.entity.MsDeltaLink;
 import com.GASB.o365_func.repository.MonitoredUsersRepo;
+import com.GASB.o365_func.repository.MsDeltaLinkRepo;
 import com.GASB.o365_func.repository.WorkSpaceConfigRepo;
-import com.GASB.o365_func.service.JwtDecoder;
-import com.azure.core.credential.TokenRequestContext;
-import com.azure.identity.ClientSecretCredential;
-import com.azure.identity.ClientSecretCredentialBuilder;
-import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
+import com.GASB.o365_func.service.util.JwtDecoder;
 import com.microsoft.graph.http.GraphServiceException;
 import com.microsoft.graph.models.DriveItem;
-import com.microsoft.graph.models.Request;
+import com.microsoft.graph.models.DriveItemDeltaParameterSet;
 import com.microsoft.graph.models.Site;
-import com.microsoft.graph.models.User;
-import com.microsoft.graph.requests.GraphServiceClient;
-import com.microsoft.graph.requests.DriveItemCollectionPage;
-import com.microsoft.graph.requests.SiteCollectionPage;
-import com.microsoft.graph.requests.UserCollectionPage;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
-import lombok.RequiredArgsConstructor;
+import com.microsoft.graph.requests.*;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.tomcat.jni.FileInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Service;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.security.Key;
 import java.util.*;
 
 @Service
@@ -48,14 +34,18 @@ public class MsApiService {
     private final MonitoredUsersRepo monitoredUsersRepo;
     private final SimpleAuthProvider simpleAuthProvider;
     private final WorkSpaceConfigRepo workspaceConfigRepo;
+    private final MsDeltaLinkRepo msDeltaLinkRepo;
+
+    private GraphServiceClient<?> graphClient;
     @Autowired
-    public MsApiService(MonitoredUsersRepo monitoredUsersRepo, SimpleAuthProvider simpleAuthProvider, WorkSpaceConfigRepo workspaceConfigRepo
+    public MsApiService(MonitoredUsersRepo monitoredUsersRepo, SimpleAuthProvider simpleAuthProvider, WorkSpaceConfigRepo workspaceConfigRepo, MsDeltaLinkRepo msDeltaLinkRepo
                         /*@Value("${onedrive.client.id}") String clientId,
                         @Value("${onedrive.client.secret}") String clientSecret,
                         @Value("${onedrive.tenant.id}") String tenantId*/) {
         this.simpleAuthProvider = simpleAuthProvider;
         this.monitoredUsersRepo = monitoredUsersRepo;
         this.workspaceConfigRepo = workspaceConfigRepo;
+        this.msDeltaLinkRepo = msDeltaLinkRepo;
 //        // ClientSecretCredential을 사용하여 자격 증명 생성
 //        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
 //                .clientId(clientId)
@@ -77,20 +67,16 @@ public class MsApiService {
 
 
     public GraphServiceClient<?> createGraphClient(int workspace_id){
-        String token = workspaceConfigRepo.findTokenById(workspace_id).orElse(null);
-        if (token == null) {
-            log.error("Token is null");
-            return null;
+        if (graphClient == null) {
+            String token = workspaceConfigRepo.findTokenById(workspace_id).orElse(null);
+            if (token == null || !tokenValidation(token)) {
+                log.error("Invalid or expired token for workspace {}", workspace_id);
+                return null;
+            }
+            simpleAuthProvider.setAccessToken(token);
+            graphClient = GraphServiceClient.builder().authenticationProvider(simpleAuthProvider).buildClient();
         }
-        if (!tokenValidation(token)) {
-            log.error("Token is Expired");
-            return null;
-        }
-        simpleAuthProvider.setAccessToken(token);
-        return GraphServiceClient
-                .builder()
-                .authenticationProvider(simpleAuthProvider)
-                .buildClient();
+        return graphClient;
     }
 
 
@@ -191,6 +177,124 @@ public class MsApiService {
         }
         return responses;
     }
+
+
+    /**
+     * 최초 Delta API 호출: 특정 사용자의 OneDrive에서 변경 사항 추적 시작
+     * @param userId 사용자 ID
+     * @return DriveItemDeltaCollectionPage 최초 Delta API 호출 결과
+     */
+    public String initDeltaLink(String userId, GraphServiceClient<?> graphClient) {
+        try {
+            int workspace_id = monitoredUsersRepo.getOrgSaaSId(userId);
+            // 최초 Delta API 호출 (OneDrive 루트 디렉터리)
+            DriveItemDeltaCollectionPage deltaPage = graphClient
+                    .users(userId)
+                    .drive()
+                    .root()
+                    .delta()  // delta() 메서드가 최초 Delta 호출을 의미
+                    .buildRequest()
+                    .get();
+
+            // 반환된 Delta 데이터 및 deltaLink 처리
+            String deltaLink = deltaPage.deltaLink;
+            log.info("Initial deltaLink for user {}: {}", userId, deltaLink);
+
+            // DeltaLink 저장
+            // DB구조 수정 이후 추가 예정
+            saveDeltaLink(userId, deltaLink);
+
+//            fetchDeltaChanges(userId, deltaLink,graphClient);
+            return deltaLink;
+            // Delta 결과 반환
+        } catch (Exception e) {
+            log.error("Error occurred while initiating Delta API for user {}: {}", userId, e.getMessage());
+            return null;
+        }
+    }
+
+    private void saveDeltaLink(String userId, String deltaLink) {
+        MonitoredUsers monitoredUsers = monitoredUsersRepo.findByUserId(userId).orElse(null);
+        if (monitoredUsers == null) {
+            log.error("User not found for user ID: {}", userId);
+            return;
+        }
+        String token = deltaLink.split("token=")[1];
+        if (msDeltaLinkRepo.existsByMonitoredUsers_Id(monitoredUsers.getId())){
+            msDeltaLinkRepo.updateDeltaLink(token, monitoredUsers.getId());
+            return;
+        }
+        MsDeltaLink msDeltaLink = MsDeltaLink.builder()
+                .monitoredUsers(monitoredUsers)
+                .deltaLink(token)
+                .build();
+        msDeltaLinkRepo.save(msDeltaLink);
+    }
+
+    public DriveItemDeltaCollectionPage fetchDeltaChangesItem(String userId,String deltaLink, GraphServiceClient<?> graphClient) {
+        try {
+            DriveItemDeltaParameterSet parameterSet = DriveItemDeltaParameterSet
+                    .newBuilder()
+                    .withToken(deltaLink)  // DeltaLink 전달
+                    .build();
+
+            DriveItemDeltaCollectionPage deltaPage = graphClient
+                    .users(userId)
+                    .drive()
+                    .root()
+                    .delta(parameterSet)
+                    .buildRequest()
+                    .get();
+
+            return deltaPage;
+        } catch (Exception e) {
+            log.error("Error occurred while fetching delta changes for user {}: {}", userId, e.getMessage());
+            return null;
+        }
+    }
+
+
+    public void fetchDeltaInfo(String userId) {
+        try {
+            GraphServiceClient<?> graphClient = createGraphClient(monitoredUsersRepo.getOrgSaaSId(userId));
+
+            // DeltaLink 조회
+            int user_id = monitoredUsersRepo.getIdx(userId);
+            String deltaLink = msDeltaLinkRepo.findDeltaLinkByUserId(user_id).orElse(null);
+
+            DriveItemDeltaCollectionPage deltaPage = fetchDeltaChangesItem(userId, deltaLink, graphClient);
+            log.info("DriveItemDeltaCollectionPage: {}", deltaPage.getCurrentPage().size());
+            log.info("Page : {}", deltaPage.getCurrentPage());
+            deltaPage.getCurrentPage().forEach(driveItem -> {
+                log.info("File ID: {}, Name: {}, Size: {}, ", driveItem.id, driveItem.name, driveItem.size);
+            });
+            // 변경 사항이 없는 경우
+            if (deltaPage == null || deltaPage.getCurrentPage().isEmpty()) {
+                log.info("No changes found for user {}", userId);
+            }
+
+            // 응답에서 데이터 추출
+            // 파일 정보 조회 API 호출
+//            DriveItem fileInfo = graphClient
+//                    .users(userId)
+//                    .drive()
+//                    .items(fileId)  // 파일 ID로 특정 파일 정보 조회
+//                    .buildRequest()
+//                    .get();
+
+            // 파일 정보 반환
+//            log.info("File Info: ID = {}, Name = {}, Size = {}", fileInfo.id, fileInfo.name, fileInfo.size);
+
+            //새롭게 deltaLink를 업데이트
+            initDeltaLink(userId, graphClient);
+//            return fileInfo;
+        } catch (Exception e) {
+            log.error("Error occurred while fetching delta changes for user {}: {}", userId, e.getMessage());
+//            return null;
+        }
+    }
+
+
 
     //토큰 검증하는 부분
     private boolean tokenValidation(String token) {
