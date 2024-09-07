@@ -1,5 +1,6 @@
 package com.GASB.o365_func.service.event;
 
+import com.GASB.o365_func.model.dto.MsFileInfoDto;
 import com.GASB.o365_func.model.entity.Activities;
 import com.GASB.o365_func.model.entity.OrgSaaS;
 import com.GASB.o365_func.model.mapper.MsFileMapper;
@@ -9,6 +10,7 @@ import com.GASB.o365_func.service.message.MessageSender;
 import com.GASB.o365_func.service.util.FileDownloadUtil;
 import com.microsoft.graph.models.DriveItem;
 import com.microsoft.graph.requests.DriveItemDeltaCollectionPage;
+import com.microsoft.graph.requests.GraphServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
@@ -34,29 +37,69 @@ public class MsFileEvent {
     private final MessageSender messageSender;
     private final MsDeltaLinkRepo msDeltaLinkRepo;
 
-    public void handleFileEvent(/*Map<String,Object> payload*/String event_type) {
-//        log.info("Handling file event with payload: {}", payload);
+    public void handleFileEvent(Map<String, Object> payload, String event_type) {
+        log.info("Handling file event with payload: {}", payload);
         try {
-//            String userId = payload.get("userId").toString();
-//            String tenantId = payload.get("tenantId").toString();
+            String userId = payload.get("userId").toString();
 
-            String tmpUserId = "5c9a4995-181f-4726-b994-7410c5ab0774";
+            // 사용자 및 SaaS ID 조회
+            CompletableFuture<Integer> orgSaasIdFuture = CompletableFuture.supplyAsync(() ->
+                    monitoredUsersRepo.getOrgSaaSId(userId)
+            );
 
-            // 이후 델타 api를 사용해서 변경사항 조회.
-            // 그래프 클라이언트도 가져와야겠네
-            // 아님 어차피 유저 아이디로도 조회 가능한데?
-            int org_saas_id = monitoredUsersRepo.getOrgSaaSId(tmpUserId);
-            OrgSaaS orgSaaSObject = orgSaaSRepo.findById(org_saas_id).orElse(null);
+            CompletableFuture<OrgSaaS> orgSaaSObjectFuture = orgSaasIdFuture.thenApply(org_saas_id ->
+                    orgSaaSRepo.findById(org_saas_id).orElse(null)
+            );
 
-            msApiService.fetchDeltaInfo(tmpUserId);
+            CompletableFuture<GraphServiceClient<?>> graphClientFuture = orgSaasIdFuture.thenApply(msApiService::createGraphClient
+            );
 
-//            fileService.processAndStoreFile(fileInfo, orgSaaSObject, orgSaaSObject.getId(), event);
-//
-//            log.info("File event processed successfully for file ID: {}", fileInfo.getId());
+            // 모든 비동기 작업 완료 후 처리
+            CompletableFuture<Void> combinedFuture = CompletableFuture.allOf(orgSaasIdFuture, orgSaaSObjectFuture, graphClientFuture)
+                    .thenComposeAsync(v -> graphClientFuture.thenComposeAsync(graphClient ->
+                            msApiService.fetchDeltaInfo(userId, graphClient)
+                                    .thenAcceptAsync(driveItemsWithEventType -> {
+                                        try {
+                                            OrgSaaS orgSaaSObject = orgSaaSObjectFuture.join();  // CompletableFuture에서 결과 가져오기
+                                            int org_saas_id = orgSaasIdFuture.join();
+
+                                            // Map<DriveItem, String> 처리
+                                            driveItemsWithEventType.forEach((driveItem, eventType) -> {
+                                                log.info("Processing item: {}, EventType: {}", driveItem, eventType);
+                                                if (eventType.equals("file_delete")){
+                                                    return ;
+                                                }
+                                                fileService.processAndStoreFile(
+                                                        msFileMapper.toOneDriveEntity(driveItem),
+                                                        orgSaaSObject,
+                                                        org_saas_id,
+                                                        eventType,
+                                                        graphClient
+                                                );
+                                            });
+                                        } catch (Exception e) {
+                                            log.error("Error processing drive items: {}", e.getMessage());
+                                        }
+                                    }).exceptionally(ex -> {
+                                        log.error("Error fetching delta info: {}", ex.getMessage());
+                                        return null;
+                                    })
+                    )).exceptionally(ex -> {
+                        log.error("Error during combined futures: {}", ex.getMessage());
+                        return null;
+                    });
+
+            // 비동기 작업 중 예외 처리
+            combinedFuture.exceptionally(ex -> {
+                log.error("Error occurred while processing file event: {}", ex.getMessage());
+                return null;
+            });
+
         } catch (Exception e) {
             log.error("Unexpected error processing file event", e);
         }
     }
+
 
 //    public void handleFileDeleteEvent(Map<String, Object> payload) {
 //        try {
