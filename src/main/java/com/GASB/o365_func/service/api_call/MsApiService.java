@@ -1,5 +1,6 @@
 package com.GASB.o365_func.service.api_call;
 
+import com.GASB.o365_func.model.dto.MsFileInfoDto;
 import com.GASB.o365_func.model.entity.MonitoredUsers;
 import com.GASB.o365_func.model.entity.MsDeltaLink;
 import com.GASB.o365_func.repository.MonitoredUsersRepo;
@@ -18,6 +19,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
@@ -254,46 +256,52 @@ public class MsApiService {
     }
 
 
-    public void fetchDeltaInfo(String userId) {
-        try {
-            GraphServiceClient<?> graphClient = createGraphClient(monitoredUsersRepo.getOrgSaaSId(userId));
+    public CompletableFuture<Map<DriveItem, String>> fetchDeltaInfo(String userId, GraphServiceClient<?> graphClient) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                Map<DriveItem, String> response = new HashMap<>();
 
-            // DeltaLink 조회
-            int user_id = monitoredUsersRepo.getIdx(userId);
-            String deltaLink = msDeltaLinkRepo.findDeltaLinkByUserId(user_id).orElse(null);
+                // DeltaLink 조회
+                int user_id = monitoredUsersRepo.getIdx(userId);
+                String deltaLink = msDeltaLinkRepo.findDeltaLinkByUserId(user_id).orElse(null);
 
-            DriveItemDeltaCollectionPage deltaPage = fetchDeltaChangesItem(userId, deltaLink, graphClient);
-            log.info("DriveItemDeltaCollectionPage: {}", deltaPage.getCurrentPage().size());
-            log.info("Page : {}", deltaPage.getCurrentPage());
-            deltaPage.getCurrentPage().forEach(driveItem -> {
-                log.info("File ID: {}, Name: {}, Size: {}, ", driveItem.id, driveItem.name, driveItem.size);
-            });
-            // 변경 사항이 없는 경우
-            if (deltaPage == null || deltaPage.getCurrentPage().isEmpty()) {
-                log.info("No changes found for user {}", userId);
+                DriveItemDeltaCollectionPage deltaPage = fetchDeltaChangesItem(userId, deltaLink, graphClient);
+                log.info("DriveItemDeltaCollectionPage: {}", deltaPage.getCurrentPage().size());
+                log.info("Page : {}", deltaPage.getCurrentPage());
+
+                // 변경 사항이 없는 경우
+                if (deltaPage.getCurrentPage().isEmpty()) {
+                    log.info("No changes found for user {}", userId);
+                }
+
+                deltaPage.getCurrentPage().forEach(driveItem -> {
+                    log.info("File ID: {}, Name: {}, Size: {}, ", driveItem.id, driveItem.name, driveItem.size);
+                    response.put(driveItem, eventTypeSeperator(driveItem));
+                });
+
+                // 새롭게 deltaLink를 업데이트
+                initDeltaLink(userId, graphClient);
+                return response;
+
+            } catch (Exception e) {
+                log.error("Error occurred while fetching delta changes for user {}: {}", userId, e.getMessage());
+                return Collections.emptyMap(); // 예외 시 빈 리스트 반환
             }
-
-            // 응답에서 데이터 추출
-            // 파일 정보 조회 API 호출
-//            DriveItem fileInfo = graphClient
-//                    .users(userId)
-//                    .drive()
-//                    .items(fileId)  // 파일 ID로 특정 파일 정보 조회
-//                    .buildRequest()
-//                    .get();
-
-            // 파일 정보 반환
-//            log.info("File Info: ID = {}, Name = {}, Size = {}", fileInfo.id, fileInfo.name, fileInfo.size);
-
-            //새롭게 deltaLink를 업데이트
-            initDeltaLink(userId, graphClient);
-//            return fileInfo;
-        } catch (Exception e) {
-            log.error("Error occurred while fetching delta changes for user {}: {}", userId, e.getMessage());
-//            return null;
-        }
+        });
     }
 
+    private String eventTypeSeperator(DriveItem item) {
+        if (item.deleted != null) {
+            return "file_delete";
+        } else if (item.createdDateTime != null && item.lastModifiedDateTime != null) {
+            if (item.createdDateTime.equals(item.lastModifiedDateTime)) {
+                return "file_upload";
+            } else {
+                return "file_change";
+            }
+        }
+        return "";
+    }
 
 
     //토큰 검증하는 부분
