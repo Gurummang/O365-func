@@ -67,15 +67,16 @@ public class MsFileEvent {
                                             driveItemsWithEventType.forEach((driveItem, eventType) -> {
                                                 log.info("Processing item: {}, EventType: {}", driveItem, eventType);
                                                 if (eventType.equals("file_delete")){
-                                                    return ;
+                                                    handleFileDeleteEvent(driveItem);
+                                                } else {
+                                                    fileService.processAndStoreFile(
+                                                            msFileMapper.toOneDriveEntity(driveItem),
+                                                            orgSaaSObject,
+                                                            org_saas_id,
+                                                            eventType,
+                                                            graphClient
+                                                    );
                                                 }
-                                                fileService.processAndStoreFile(
-                                                        msFileMapper.toOneDriveEntity(driveItem),
-                                                        orgSaaSObject,
-                                                        org_saas_id,
-                                                        eventType,
-                                                        graphClient
-                                                );
                                             });
                                         } catch (Exception e) {
                                             log.error("Error processing drive items: {}", e.getMessage());
@@ -101,44 +102,42 @@ public class MsFileEvent {
     }
 
 
-//    public void handleFileDeleteEvent(Map<String, Object> payload) {
-//        try {
-//            log.info("event_type : {}", payload.get("event"));
-//            // 1. activities 테이블에 deleted 이벤트로 추가
-//            String file_id = payload.get("fileId").toString();
-//            String event_ts = payload.get("timestamp").toString();
-//            String file_owner_id= null, file_name = null;
-//
-//            long timestamp = Long.parseLong(event_ts.split("\\.")[0]);
-//            Activities activities = copyForDelete(file_id, timestamp);
-//            fileActivityRepo.save(activities);
-//            // 2. file_upload 테이블에서 deleted 컬럼을 true로 변경
-//            fileUploadRepository.checkDelete(file_id);
-//            messageSender.sendGroupingMessage(activities.getId());
-//        } catch (Exception e) {
-//            log.error("Error processing file delete event", e);
-//        }
-//    }
-//
-//    private Activities copyForDelete(String file_id, long timestamp){
-//        Activities activities = fileActivityRepo.findRecentBySaasFileId(file_id).orElse(null);
-//
-//        // timestamp가 0일 경우, 현재 시간을 사용할 수 있도록 처리
-//        LocalDateTime adjustedTimestamp;
-//        if (timestamp > 0) {
-//            adjustedTimestamp = LocalDateTime.ofInstant(Instant.ofEpochSecond(timestamp), ZoneId.of("Asia/Seoul"));
-//        } else {
-//            adjustedTimestamp = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
-//        }
-//
-//        return Activities.builder()
-//                .user(activities.getUser())
-//                .eventType("file_delete")
-//                .saasFileId(file_id)
-//                .fileName(activities.getFileName())
-//                .eventTs(adjustedTimestamp)
-//                .uploadChannel(activities.getUploadChannel())
-//                .tlsh(activities.getTlsh())
-//                .build();
-//    }
+    public void handleFileDeleteEvent(DriveItem item) {
+        try {
+            // 1. activities 테이블에 deleted 이벤트로 추가
+            String file_id = item.id;
+            // 현재시각
+            long timestamp = Instant.now().getEpochSecond();
+
+            Activities activities = copyForDelete(file_id, timestamp);
+            fileActivityRepo.save(activities);
+            // 2. file_upload 테이블에서 deleted 컬럼을 true로 변경
+            fileUploadRepository.checkDelete(file_id);
+            messageSender.sendGroupingMessage(activities.getId());
+        } catch (Exception e) {
+            log.error("Error processing file delete event", e);
+        }
+    }
+
+    private Activities copyForDelete(String file_id, long timestamp){
+        Activities activities = fileActivityRepo.findRecentBySaasFileId(file_id).orElse(null);
+
+        // timestamp가 0일 경우, 현재 시간을 사용할 수 있도록 처리
+        LocalDateTime adjustedTimestamp;
+        if (timestamp > 0) {
+            adjustedTimestamp = LocalDateTime.ofInstant(Instant.ofEpochSecond(timestamp), ZoneId.of("Asia/Seoul"));
+        } else {
+            adjustedTimestamp = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+        }
+
+        return Activities.builder()
+                .user(activities.getUser())
+                .eventType("file_delete")
+                .saasFileId(file_id)
+                .fileName(activities.getFileName())
+                .eventTs(adjustedTimestamp)
+                .uploadChannel(activities.getUploadChannel())
+                .tlsh(activities.getTlsh())
+                .build();
+    }
 }
