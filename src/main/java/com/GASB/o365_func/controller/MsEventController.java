@@ -23,8 +23,8 @@ public class MsEventController {
         this.msFileEvent = msFileEvent;
     }
     @PostMapping("/file-change")
-    public ResponseEntity<String> handleFileChangeEvent(/*@RequestBody Map<String, Object> payload*/) {
-        msFileEvent.handleFileEvent( /*payload,*/"file_change");
+    public ResponseEntity<String> handleFileChangeEvent(@RequestBody Map<String, Object> payload) {
+        msFileEvent.handleFileEvent(payload,"file_change");
         return ResponseEntity.ok("File Change Event received and logged");
     }
 }
