@@ -172,13 +172,21 @@ public class FileDownloadUtil {
 
         String filePath = BASE_PATH.resolve(file.getFile_name()).toString();
         String s3Key = getFullPath(file, saasName, orgName, hash);
+        String displayPath = createDisplayPath(orgName, saasName, file.file_owner_name, filePath);
 
-        processAndSaveFileData(file, hash, s3Key, orgSaaSObject, changeTime, event_type, user, s3Key, tlsh.toString(), filePath);
+        processAndSaveFileData(file, hash, s3Key, orgSaaSObject, changeTime, event_type, user, displayPath, tlsh.toString(), filePath);
 
 
         uploadFileToS3(filePath, s3Key);
 
         return null;
+    }
+
+    private String createDisplayPath(String orgName, String saasName, String owner_name, String filePath) {
+        if (filePath != null) {
+            return String.format("%s/%s/%s/%s", orgName, saasName, owner_name, filePath);
+        }
+        return "";
     }
 
     public static String calculateHash(byte[] fileData) throws NoSuchAlgorithmException {
@@ -187,10 +195,6 @@ public class FileDownloadUtil {
         byte[] hash = digest.digest(fileData);
 
         return bytesToHex(hash);
-    }
-
-    private String getWorkspaceName(int workspaceId) {
-        return workSpaceRepo.findById(workspaceId).get().getWorkspaceName();
     }
 
     private static String bytesToHex(byte[] bytes) {
@@ -240,6 +244,7 @@ public class FileDownloadUtil {
     private void processAndSaveFileData(MsFileInfoDto file, String hash, String s3Key, OrgSaaS orgSaaSObject,
                                         LocalDateTime changeTime, String event_type, MonitoredUsers user,
                                         String uploadedChannelPath, String tlsh, String filePath) {
+
         StoredFile storedFile = msFileMapper.toStoredFileEntity(file, hash, s3Key);
         FileUploadTable fileUploadTableObject = msFileMapper.toFileUploadEntity(file, orgSaaSObject, hash, changeTime);
         Activities activity = msFileMapper.toActivityEntity(file, event_type, user, uploadedChannelPath,tlsh);
