@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -40,8 +41,9 @@ public class MsFileEvent {
     public void handleFileEvent(Map<String, Object> payload, String event_type) {
         log.info("Handling file event with payload: {}", payload);
         try {
-            String userId = payload.get("userId").toString();
-
+            log.info("Handling file event with payload: {}", payload);
+            String userId = payload.get("userId").toString().split("/")[2];
+            log.info("Handling file event with userId: {}", userId);
             // 사용자 및 SaaS ID 조회
             CompletableFuture<Integer> orgSaasIdFuture = CompletableFuture.supplyAsync(() ->
                     monitoredUsersRepo.getOrgSaaSId(userId)
@@ -135,7 +137,7 @@ public class MsFileEvent {
         }
 
         return Activities.builder()
-                .user(activities.getUser())
+                .user(Objects.requireNonNull(activities).getUser())
                 .eventType("file_delete")
                 .saasFileId(file_id)
                 .fileName(activities.getFileName())
