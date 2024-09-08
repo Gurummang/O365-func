@@ -156,7 +156,13 @@ public class FileDownloadUtil {
         log.info("file event type : {}", event_type);
 
         String hash = calculateHash(fileData);
-        Tlsh tlsh = computeTlsHash(fileData);
+//        Tlsh tlsh = computeTlsHash(fileData);
+        String tlsh = null;
+        try {
+            tlsh = computeTlsHash(fileData).toString();
+        } catch (IOException e) {
+            tlsh = "Error computing TLSH hash";
+        }
         log.info(tlsh.toString());
 
         LocalDateTime changeTime = extractChangeTime(event_type);
@@ -174,7 +180,7 @@ public class FileDownloadUtil {
         String s3Key = getFullPath(file, saasName, orgName, hash);
         String displayPath = createDisplayPath(orgName, saasName, file.file_owner_name, filePath);
 
-        processAndSaveFileData(file, hash, s3Key, orgSaaSObject, changeTime, event_type, user, displayPath, tlsh.toString(), filePath);
+        processAndSaveFileData(file, hash, s3Key, orgSaaSObject, changeTime, event_type, user, displayPath, tlsh, filePath);
 
 
         uploadFileToS3(filePath, s3Key);
