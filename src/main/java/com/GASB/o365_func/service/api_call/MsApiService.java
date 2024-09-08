@@ -71,6 +71,7 @@ public class MsApiService {
     public GraphServiceClient<?> createGraphClient(int workspace_id){
         if (graphClient == null) {
             String token = workspaceConfigRepo.findTokenById(workspace_id).orElse(null);
+            log.info("Token: {}",token);
             if (token == null || !tokenValidation(token)) {
                 log.error("Invalid or expired token for workspace {}", workspace_id);
                 return null;
@@ -117,6 +118,23 @@ public class MsApiService {
             }
         }
         return responses;
+    }
+
+    public DriveItem getEachFileInto(String userId, String fileId, GraphServiceClient graphClient) {
+        try {
+            DriveItem driveItem = graphClient.users(userId)
+                    .drive()
+                    .items(fileId)
+                    .buildRequest()
+                    .get();
+            return driveItem;
+        } catch (GraphServiceException e) {
+            log.error("GraphServiceException occurred while fetching file for user ID {} and file ID {}: {}", userId, fileId, e.getMessage(), e);
+            return null;
+        } catch (Exception e) {
+            log.error("Unexpected error occurred while fetching file for user ID {} and file ID {}: {}", userId, fileId, e.getMessage(), e);
+            return null;
+        }
     }
 
     public List<SiteCollectionPage> fetchSiteLists(GraphServiceClient graphClient) {
@@ -264,6 +282,7 @@ public class MsApiService {
                 // DeltaLink 조회
                 int user_id = monitoredUsersRepo.getIdx(userId);
                 String deltaLink = msDeltaLinkRepo.findDeltaLinkByUserId(user_id).orElse(null);
+                log.info("DeltaLink for user {}: {}", userId, deltaLink);
 
                 DriveItemDeltaCollectionPage deltaPage = fetchDeltaChangesItem(userId, deltaLink, graphClient);
                 log.info("DriveItemDeltaCollectionPage: {}", deltaPage.getCurrentPage().size());
@@ -276,11 +295,22 @@ public class MsApiService {
 
                 deltaPage.getCurrentPage().forEach(driveItem -> {
                     log.info("File ID: {}, Name: {}, Size: {}, ", driveItem.id, driveItem.name, driveItem.size);
-                    response.put(driveItem, eventTypeSeperator(driveItem));
+//                    DriveItem item = getEachFileInto(userId, driveItem.id, graphClient);
+                    if (driveItem.folder != null){
+                        log.info("Folder: {}", driveItem.folder);
+                        return;
+                    }
+                    String eventType = eventTypeSeperator(driveItem);
+                    switch (eventType) {
+                        case "file_delete" -> response.put(driveItem, "file_delete");
+                        case "file_change" -> response.put(getEachFileInto(userId, driveItem.id, graphClient), "file_change");
+                        case "file_upload" -> response.put(getEachFileInto(userId, driveItem.id, graphClient), "file_upload");
+                    }
+//                    response.put(item, eventTypeSeperator(driveItem)); // 근데 지금 이벤트 타입의 경우에 따라서 다르게 처리해야함. delete의 경우에는 이게 안오기 때문에...
                 });
 
                 // 새롭게 deltaLink를 업데이트
-                initDeltaLink(userId, graphClient);
+                initDeltaLink(userId, graphClient); //여기까지는 잘 되는것을 확인!
                 return response;
 
             } catch (Exception e) {
