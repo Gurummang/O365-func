@@ -62,14 +62,18 @@ public class MsFileEvent {
                                         try {
                                             OrgSaaS orgSaaSObject = orgSaaSObjectFuture.join();  // CompletableFuture에서 결과 가져오기
                                             int org_saas_id = orgSaasIdFuture.join();
-
-                                            // Map<DriveItem, String> 처리
                                             driveItemsWithEventType.forEach((driveItem, eventType) -> {
                                                 log.info("Processing item: {}, EventType: {}", driveItem, eventType);
-                                                if (eventType.equals("file_delete")){
-                                                    handleFileDeleteEvent(driveItem);
-                                                } else {
-                                                    fileService.processAndStoreFile(
+                                                switch (eventType) {
+                                                    case "file_delete" -> handleFileDeleteEvent(driveItem);
+                                                    case "file_change" -> fileService.processAndStoreFile(
+                                                            msFileMapper.OneDriveChangeEvent(driveItem),
+                                                            orgSaaSObject,
+                                                            org_saas_id,
+                                                            eventType,
+                                                            graphClient
+                                                    );
+                                                    default -> fileService.processAndStoreFile(
                                                             msFileMapper.toOneDriveEntity(driveItem),
                                                             orgSaaSObject,
                                                             org_saas_id,
@@ -125,9 +129,9 @@ public class MsFileEvent {
         // timestamp가 0일 경우, 현재 시간을 사용할 수 있도록 처리
         LocalDateTime adjustedTimestamp;
         if (timestamp > 0) {
-            adjustedTimestamp = LocalDateTime.ofInstant(Instant.ofEpochSecond(timestamp), ZoneId.of("Asia/Seoul"));
+            adjustedTimestamp = LocalDateTime.ofInstant(Instant.ofEpochSecond(timestamp), ZoneId.systemDefault());
         } else {
-            adjustedTimestamp = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+            adjustedTimestamp = LocalDateTime.now(ZoneId.systemDefault());
         }
 
         return Activities.builder()
