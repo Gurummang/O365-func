@@ -34,11 +34,13 @@ public class MsFileMapper {
     private final MonitoredUsersRepo monitoredUsersRepo;
 
     public MsFileInfoDto toOneDriveEntity(DriveItem item){
+        log.info("DriveItem: {}", item);
+        String mimeType = Objects.requireNonNull(item.file).mimeType != null ? item.file.mimeType : "text/plain";
         return MsFileInfoDto.builder()
                 .file_id(item.id)
                 .file_name(item.name)
-                .file_type(MimeType.getExtensionByMimeType(item.file.mimeType))
-                .file_mimetype(item.file.mimeType)
+                .file_type(MimeType.getExtensionByMimeType(Objects.requireNonNull(mimeType))) //txt파일의 경우 mimeType이 text/plain이라서 txt로 바꿔줘야함
+                .file_mimetype(mimeType)
                 .file_download_url(item.additionalDataManager().get("@microsoft.graph.downloadUrl").toString())
                 .file_size(item.size)
                 .file_owner_id(Objects.requireNonNull(Objects.requireNonNull(item.createdBy).user).id)
@@ -50,11 +52,13 @@ public class MsFileMapper {
     }
 
     public MsFileInfoDto OneDriveChangeEvent(DriveItem item){
+        log.info("DriveItem: {}", item);
+        String mimeType = Objects.requireNonNull(item.file).mimeType != null ? item.file.mimeType : "text/plain";
         return MsFileInfoDto.builder()
                 .file_id(item.id)
                 .file_name(item.name)
-                .file_type(MimeType.getExtensionByMimeType(item.file.mimeType))
-                .file_mimetype(item.file.mimeType)
+                .file_type(MimeType.getExtensionByMimeType(Objects.requireNonNull(mimeType)))
+                .file_mimetype(mimeType)
                 .file_download_url(item.additionalDataManager().get("@microsoft.graph.downloadUrl").toString())
                 .file_size(item.size)
                 .file_owner_id(Objects.requireNonNull(Objects.requireNonNull(item.createdBy).user).id)
@@ -66,11 +70,13 @@ public class MsFileMapper {
     }
 
     public MsFileInfoDto toSharePointEntity(DriveItem item){
+        log.info("DriveItem: {}", item);
+        String mimeType = Objects.requireNonNull(item.file).mimeType != null ? item.file.mimeType : "text/plain";
         return MsFileInfoDto.builder()
                 .file_id(item.id)
                 .file_name(item.name)
-                .file_type(MimeType.getExtensionByMimeType(item.file.mimeType)) //이거는 mimeType이라서 좀 수정할 필요있음
-                .file_mimetype(item.file.mimeType)
+                .file_type(MimeType.getExtensionByMimeType(Objects.requireNonNull(mimeType))) //이거는 mimeType이라서 좀 수정할 필요있음
+                .file_mimetype(mimeType)
                 .file_download_url(item.additionalDataManager().get("@microsoft.graph.downloadUrl").toString())
                 .file_size(item.size)
                 .file_owner_id(Objects.requireNonNull(Objects.requireNonNull(item.createdBy).user).id)
@@ -128,7 +134,7 @@ public class MsFileMapper {
                 .fileName(file.getFile_name())
                 .eventTs(file.getFile_created_time())  // eventTs가 null일 수 있음에 유의
                 .uploadChannel(channel)
-                .tlsh(tlsh)
+                .tlsh(tlsh == null ? "not enough data or data has too little variance" : tlsh)
                 .build();
     }
 
