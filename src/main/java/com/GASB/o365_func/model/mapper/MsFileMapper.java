@@ -48,6 +48,23 @@ public class MsFileMapper {
                 .isOneDrive(true)
                 .build();
     }
+
+    public MsFileInfoDto OneDriveChangeEvent(DriveItem item){
+        return MsFileInfoDto.builder()
+                .file_id(item.id)
+                .file_name(item.name)
+                .file_type(MimeType.getExtensionByMimeType(item.file.mimeType))
+                .file_mimetype(item.file.mimeType)
+                .file_download_url(item.additionalDataManager().get("@microsoft.graph.downloadUrl").toString())
+                .file_size(item.size)
+                .file_owner_id(Objects.requireNonNull(Objects.requireNonNull(item.createdBy).user).id)
+                .file_owner_name(Objects.requireNonNull(item.createdBy.user).displayName)
+                .file_created_time(Objects.requireNonNull(item.lastModifiedDateTime).toLocalDateTime().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("Asia/Seoul")).toLocalDateTime())
+                .file_path(Objects.requireNonNull(item.parentReference).path)
+                .isOneDrive(true)
+                .build();
+    }
+
     public MsFileInfoDto toSharePointEntity(DriveItem item){
         return MsFileInfoDto.builder()
                 .file_id(item.id)
