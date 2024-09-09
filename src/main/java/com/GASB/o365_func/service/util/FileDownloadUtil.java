@@ -156,14 +156,21 @@ public class FileDownloadUtil {
         log.info("file event type : {}", event_type);
 
         String hash = calculateHash(fileData);
-//        Tlsh tlsh = computeTlsHash(fileData);
+
+        // TLSH 계산 시 예외가 발생해도 프로세스를 멈추지 않도록 예외 처리
         String tlsh = null;
         try {
-            tlsh = computeTlsHash(fileData).toString();
-        } catch (IOException e) {
-            tlsh = "Error computing TLSH hash";
+            Tlsh tlshResult = computeTlsHash(fileData);
+            if (tlshResult != null) {
+                tlsh = tlshResult.toString();
+            } else {
+                tlsh = "TLSH calculation failed"; // TLSH 계산 실패 시 대체 값
+            }
+        } catch (Exception e) {
+            log.error("Error computing TLSH hash", e);
+            tlsh = "TLSH calculation failed";
         }
-        log.info(tlsh.toString());
+        log.info("TLSH: {}", tlsh);
 
         LocalDateTime changeTime = extractChangeTime(event_type);
         String userId = file.getFile_owner_id();
@@ -178,13 +185,14 @@ public class FileDownloadUtil {
         String s3Key = getFullPath(file, saasName, orgName, hash);
         String displayPath = createDisplayPath(orgName, saasName, file.file_owner_name, filePath);
 
+        // 다른 작업을 계속 수행
         processAndSaveFileData(file, hash, s3Key, orgSaaSObject, changeTime, event_type, user, displayPath, tlsh, filePath);
-
 
         uploadFileToS3(filePath, s3Key);
 
         return null;
     }
+
 
     private String createDisplayPath(String orgName, String saasName, String owner_name, String filePath) {
         if (filePath != null) {
@@ -211,7 +219,7 @@ public class FileDownloadUtil {
     }
 
     //TLSH 해시 계산
-    private Tlsh computeTlsHash(byte[] fileData) throws IOException {
+    private Tlsh computeTlsHash(byte[] fileData) {
         if (fileData == null) {
             throw new IllegalArgumentException("fileData cannot be null");
         }
@@ -225,11 +233,18 @@ public class FileDownloadUtil {
                 tlshCreator.update(buf, 0, bytesRead);
             }
         } catch (IOException e) {
-            throw new IOException("Error computing TLSH hash", e);
+            log.error("Error reading file data for TLSH hash calculation", e);
+            return null; // TLSH 계산 실패 시 null 반환
         }
 
-        return tlshCreator.getHash();
+        try {
+            return tlshCreator.getHash();
+        } catch (IllegalStateException e) {
+            log.warn("TLSH not valid; either not enough data or data has too little variance");
+            return null; // TLSH 계산 실패 시 null 반환
+        }
     }
+
 
     private LocalDateTime extractChangeTime(String event_type) {
         LocalDateTime changeTime = null;

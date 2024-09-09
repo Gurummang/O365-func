@@ -72,14 +72,14 @@ public class MsFileEvent {
                                                             msFileMapper.OneDriveChangeEvent(driveItem),
                                                             orgSaaSObject,
                                                             org_saas_id,
-                                                            eventType,
+                                                            "file_change",
                                                             graphClient
                                                     );
                                                     default -> fileService.processAndStoreFile(
                                                             msFileMapper.toOneDriveEntity(driveItem),
                                                             orgSaaSObject,
                                                             org_saas_id,
-                                                            eventType,
+                                                            "file_upload",
                                                             graphClient
                                                     );
                                                 }

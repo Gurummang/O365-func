@@ -80,7 +80,7 @@ public class MsFileMapper {
         String mimeType = Optional.ofNullable(item.file)
                 .map(file -> file.mimeType)
                 .orElse("text/plain");
-        OffsetDateTime utcTime = item.createdDateTime;
+        OffsetDateTime utcTime = item.lastModifiedDateTime;
         LocalDateTime kstTime = Objects.requireNonNull(utcTime).atZoneSameInstant(zoneId).toLocalDateTime();
         log.info("KST Time : {} ", kstTime);
         return MsFileInfoDto.builder()
