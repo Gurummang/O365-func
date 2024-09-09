@@ -13,7 +13,7 @@ import java.util.Optional;
 @Repository
 public interface MonitoredUsersRepo extends JpaRepository<MonitoredUsers, Long> {
 
-
+    @Query("SELECT u FROM MonitoredUsers u WHERE u.userId = :userId")
     Optional<MonitoredUsers> findByUserId(String userId);
 
     @Query("SELECT EXISTS(SELECT 1 FROM MonitoredUsers u WHERE u.userId = :userId AND u.orgSaaS.id = :orgSaaSId)")
@@ -21,6 +21,14 @@ public interface MonitoredUsersRepo extends JpaRepository<MonitoredUsers, Long> 
 
     @Query("SELECT u.userId FROM MonitoredUsers u WHERE u.orgSaaS.id = :orgSaaSId")
     List<String> getMonitoredUserList(@Param("orgSaaSId") int orgSaaSId);
+
+    @Query("SELECT u.orgSaaS.id FROM MonitoredUsers u WHERE u.userId = :user_id")
+    int getOrgSaaSId(@Param("user_id")String user_id);
+
+    @Query("SELECT u.id FROM MonitoredUsers u WHERE u.userId = :user_id")
+    int getIdx(@Param("user_id")String user_id);
+
+
 
     @Query(nativeQuery = true, value =
             "SELECT " +

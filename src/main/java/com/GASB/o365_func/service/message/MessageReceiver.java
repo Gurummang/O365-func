@@ -1,5 +1,6 @@
-package com.GASB.o365_func.service;
+package com.GASB.o365_func.service.message;
 
+import com.GASB.o365_func.service.MsInitService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;

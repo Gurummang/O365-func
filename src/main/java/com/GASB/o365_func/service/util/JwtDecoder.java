@@ -1,4 +1,4 @@
-package com.GASB.o365_func.service;
+package com.GASB.o365_func.service.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;

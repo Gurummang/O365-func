@@ -1,9 +1,10 @@
-package com.GASB.o365_func.service;
+package com.GASB.o365_func.service.util;
 
 import com.GASB.o365_func.model.dto.MsFileInfoDto;
 import com.GASB.o365_func.model.entity.*;
 import com.GASB.o365_func.model.mapper.MsFileMapper;
 import com.GASB.o365_func.repository.*;
+import com.GASB.o365_func.service.message.MessageSender;
 import com.GASB.o365_func.tlsh.Tlsh;
 import com.GASB.o365_func.tlsh.TlshCreator;
 import com.microsoft.graph.requests.GraphServiceClient;
@@ -155,13 +156,24 @@ public class FileDownloadUtil {
         log.info("file event type : {}", event_type);
 
         String hash = calculateHash(fileData);
-        Tlsh tlsh = computeTlsHash(fileData);
-        log.info(tlsh.toString());
+
+        // TLSH 계산 시 예외가 발생해도 프로세스를 멈추지 않도록 예외 처리
+        String tlsh = null;
+        try {
+            Tlsh tlshResult = computeTlsHash(fileData);
+            if (tlshResult != null) {
+                tlsh = tlshResult.toString();
+            } else {
+                tlsh = "TLSH calculation failed"; // TLSH 계산 실패 시 대체 값
+            }
+        } catch (Exception e) {
+            log.error("Error computing TLSH hash", e);
+            tlsh = "TLSH calculation failed";
+        }
+        log.info("TLSH: {}", tlsh);
 
         LocalDateTime changeTime = extractChangeTime(event_type);
-        String workspaceName = "O365 Test";
         String userId = file.getFile_owner_id();
-        String uploadedUserName = file.getFile_owner_name();
 
         MonitoredUsers user = monitoredUsersRepo.fineByUserIdAndorgSaaSId(userId, workspaceId).orElse(null);
         if (user == null) return null;
@@ -171,13 +183,22 @@ public class FileDownloadUtil {
 
         String filePath = BASE_PATH.resolve(file.getFile_name()).toString();
         String s3Key = getFullPath(file, saasName, orgName, hash);
+        String displayPath = createDisplayPath(orgName, saasName, file.file_owner_name, filePath);
 
-        processAndSaveFileData(file, hash, s3Key, orgSaaSObject, changeTime, event_type, user, s3Key, tlsh.toString(), filePath);
-
+        // 다른 작업을 계속 수행
+        processAndSaveFileData(file, hash, s3Key, orgSaaSObject, changeTime, event_type, user, displayPath, tlsh, filePath);
 
         uploadFileToS3(filePath, s3Key);
 
         return null;
+    }
+
+
+    private String createDisplayPath(String orgName, String saasName, String owner_name, String filePath) {
+        if (filePath != null) {
+            return String.format("%s/%s/%s/%s", orgName, saasName, owner_name, filePath);
+        }
+        return "";
     }
 
     public static String calculateHash(byte[] fileData) throws NoSuchAlgorithmException {
@@ -186,10 +207,6 @@ public class FileDownloadUtil {
         byte[] hash = digest.digest(fileData);
 
         return bytesToHex(hash);
-    }
-
-    private String getWorkspaceName(int workspaceId) {
-        return workSpaceRepo.findById(workspaceId).get().getWorkspaceName();
     }
 
     private static String bytesToHex(byte[] bytes) {
@@ -202,7 +219,7 @@ public class FileDownloadUtil {
     }
 
     //TLSH 해시 계산
-    private Tlsh computeTlsHash(byte[] fileData) throws IOException {
+    private Tlsh computeTlsHash(byte[] fileData) {
         if (fileData == null) {
             throw new IllegalArgumentException("fileData cannot be null");
         }
@@ -216,11 +233,18 @@ public class FileDownloadUtil {
                 tlshCreator.update(buf, 0, bytesRead);
             }
         } catch (IOException e) {
-            throw new IOException("Error computing TLSH hash", e);
+            log.error("Error reading file data for TLSH hash calculation", e);
+            return null; // TLSH 계산 실패 시 null 반환
         }
 
-        return tlshCreator.getHash();
+        try {
+            return tlshCreator.getHash();
+        } catch (IllegalStateException e) {
+            log.warn("TLSH not valid; either not enough data or data has too little variance");
+            return null; // TLSH 계산 실패 시 null 반환
+        }
     }
+
 
     private LocalDateTime extractChangeTime(String event_type) {
         LocalDateTime changeTime = null;
@@ -239,6 +263,7 @@ public class FileDownloadUtil {
     private void processAndSaveFileData(MsFileInfoDto file, String hash, String s3Key, OrgSaaS orgSaaSObject,
                                         LocalDateTime changeTime, String event_type, MonitoredUsers user,
                                         String uploadedChannelPath, String tlsh, String filePath) {
+
         StoredFile storedFile = msFileMapper.toStoredFileEntity(file, hash, s3Key);
         FileUploadTable fileUploadTableObject = msFileMapper.toFileUploadEntity(file, orgSaaSObject, hash, changeTime);
         Activities activity = msFileMapper.toActivityEntity(file, event_type, user, uploadedChannelPath,tlsh);
