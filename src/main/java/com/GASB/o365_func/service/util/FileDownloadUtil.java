@@ -166,9 +166,7 @@ public class FileDownloadUtil {
         log.info(tlsh.toString());
 
         LocalDateTime changeTime = extractChangeTime(event_type);
-        String workspaceName = "O365 Test";
         String userId = file.getFile_owner_id();
-        String uploadedUserName = file.getFile_owner_name();
 
         MonitoredUsers user = monitoredUsersRepo.fineByUserIdAndorgSaaSId(userId, workspaceId).orElse(null);
         if (user == null) return null;

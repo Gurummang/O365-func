@@ -14,11 +14,10 @@ import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -33,59 +32,121 @@ public class MsFileMapper {
 
     private final MonitoredUsersRepo monitoredUsersRepo;
 
+    private final ZoneId zoneId = ZoneId.of("Asia/Seoul");
+
     public MsFileInfoDto toOneDriveEntity(DriveItem item){
         log.info("DriveItem: {}", item);
-        String mimeType = Objects.requireNonNull(item.file).mimeType != null ? item.file.mimeType : "text/plain";
+
+        // 파일 정보와 MimeType에 대한 null 체크
+        String mimeType = Optional.ofNullable(item.file)
+                .map(file -> file.mimeType)
+                .orElse("text/plain");
+
+        OffsetDateTime utcTime = item.createdDateTime;
+        log.info("utcTime : {}", utcTime);
+        LocalDateTime kstTime = Objects.requireNonNull(utcTime).atZoneSameInstant(zoneId).toLocalDateTime();
+        log.info("kstTime : {}", kstTime);
         return MsFileInfoDto.builder()
                 .file_id(item.id)
                 .file_name(item.name)
-                .file_type(MimeType.getExtensionByMimeType(Objects.requireNonNull(mimeType))) //txt파일의 경우 mimeType이 text/plain이라서 txt로 바꿔줘야함
+                .file_type(MimeType.getExtensionByMimeType(mimeType)) // txt 파일로 변환
                 .file_mimetype(mimeType)
-                .file_download_url(item.additionalDataManager().get("@microsoft.graph.downloadUrl").toString())
+                .file_download_url(Optional.ofNullable(item.additionalDataManager().get("@microsoft.graph.downloadUrl"))
+                        .map(Object::toString)
+                        .orElse(null)) // 다운로드 URL null 체크
                 .file_size(item.size)
-                .file_owner_id(Objects.requireNonNull(Objects.requireNonNull(item.createdBy).user).id)
-                .file_owner_name(Objects.requireNonNull(item.createdBy.user).displayName)
-                .file_created_time(Objects.requireNonNull(item.createdDateTime).toLocalDateTime().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("Asia/Seoul")).toLocalDateTime())
-                .file_path(Objects.requireNonNull(item.parentReference).path)
+                .file_owner_id(Optional.ofNullable(item.createdBy)
+                        .map(createdBy -> createdBy.user)
+                        .map(user -> user.id)
+                        .orElse(null)) // 파일 소유자 ID null 체크
+                .file_owner_name(Optional.ofNullable(item.createdBy)
+                        .map(createdBy -> createdBy.user)
+                        .map(user -> user.displayName)
+                        .orElse(null)) // 파일 소유자 이름 null 체크
+                .file_created_time(kstTime) // 파일 생성 시간 null 체크
+                .file_path(Optional.ofNullable(item.parentReference)
+                        .map(reference -> reference.path)
+                        .orElse(null)) // 경로 null 체크
                 .isOneDrive(true)
                 .build();
     }
 
+
+
     public MsFileInfoDto OneDriveChangeEvent(DriveItem item){
         log.info("DriveItem: {}", item);
-        String mimeType = Objects.requireNonNull(item.file).mimeType != null ? item.file.mimeType : "text/plain";
+
+        // 파일 정보와 MimeType에 대한 null 체크
+        String mimeType = Optional.ofNullable(item.file)
+                .map(file -> file.mimeType)
+                .orElse("text/plain");
+        OffsetDateTime utcTime = item.createdDateTime;
+        LocalDateTime kstTime = Objects.requireNonNull(utcTime).atZoneSameInstant(zoneId).toLocalDateTime();
+        log.info("KST Time : {} ", kstTime);
         return MsFileInfoDto.builder()
                 .file_id(item.id)
                 .file_name(item.name)
-                .file_type(MimeType.getExtensionByMimeType(Objects.requireNonNull(mimeType)))
+                .file_type(MimeType.getExtensionByMimeType(mimeType)) // MimeType을 파일 확장자로 변환
                 .file_mimetype(mimeType)
-                .file_download_url(item.additionalDataManager().get("@microsoft.graph.downloadUrl").toString())
+                .file_download_url(Optional.ofNullable(item.additionalDataManager().get("@microsoft.graph.downloadUrl"))
+                        .map(Object::toString)
+                        .orElse(null)) // 다운로드 URL null 체크
                 .file_size(item.size)
-                .file_owner_id(Objects.requireNonNull(Objects.requireNonNull(item.createdBy).user).id)
-                .file_owner_name(Objects.requireNonNull(item.createdBy.user).displayName)
-                .file_created_time(Objects.requireNonNull(item.lastModifiedDateTime).toLocalDateTime().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("Asia/Seoul")).toLocalDateTime())
-                .file_path(Objects.requireNonNull(item.parentReference).path)
+                .file_owner_id(Optional.ofNullable(item.createdBy)
+                        .map(createdBy -> createdBy.user)
+                        .map(user -> user.id)
+                        .orElse(null)) // 파일 소유자 ID null 체크
+                .file_owner_name(Optional.ofNullable(item.createdBy)
+                        .map(createdBy -> createdBy.user)
+                        .map(user -> user.displayName)
+                        .orElse(null)) // 파일 소유자 이름 null 체크
+                .file_created_time(kstTime)// 마지막 수정 시간을 서울 시간대로 변환하여 설정
+                .file_path(Optional.ofNullable(item.parentReference)
+                        .map(reference -> reference.path)
+                        .orElse(null)) // 경로 null 체크
                 .isOneDrive(true)
                 .build();
     }
 
     public MsFileInfoDto toSharePointEntity(DriveItem item){
         log.info("DriveItem: {}", item);
-        String mimeType = Objects.requireNonNull(item.file).mimeType != null ? item.file.mimeType : "text/plain";
+
+        // 파일 정보와 MimeType에 대한 null 체크
+        String mimeType = Optional.ofNullable(item.file)
+                .map(file -> file.mimeType)
+                .orElse("text/plain");
+        OffsetDateTime utcTime = item.createdDateTime;
+        LocalDateTime kstTime = Objects.requireNonNull(utcTime).atZoneSameInstant(zoneId).toLocalDateTime();
+
+
         return MsFileInfoDto.builder()
                 .file_id(item.id)
                 .file_name(item.name)
-                .file_type(MimeType.getExtensionByMimeType(Objects.requireNonNull(mimeType))) //이거는 mimeType이라서 좀 수정할 필요있음
+                .file_type(MimeType.getExtensionByMimeType(mimeType)) // MimeType을 파일 확장자로 변환
                 .file_mimetype(mimeType)
-                .file_download_url(item.additionalDataManager().get("@microsoft.graph.downloadUrl").toString())
+                .file_download_url(Optional.ofNullable(item.additionalDataManager().get("@microsoft.graph.downloadUrl"))
+                        .map(Object::toString)
+                        .orElse(null)) // 다운로드 URL null 체크
                 .file_size(item.size)
-                .file_owner_id(Objects.requireNonNull(Objects.requireNonNull(item.createdBy).user).id)
-                .file_owner_name(Objects.requireNonNull(item.createdBy.user).displayName)
-                .file_created_time(Objects.requireNonNull(item.createdDateTime).toLocalDateTime().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("Asia/Seoul")).toLocalDateTime())
-                .file_path(Objects.requireNonNull(item.parentReference).path)
-                .site_id(item.parentReference.siteId)
+                .file_owner_id(Optional.ofNullable(item.createdBy)
+                        .map(createdBy -> createdBy.user)
+                        .map(user -> user.id)
+                        .orElse(null)) // 파일 소유자 ID null 체크
+                .file_owner_name(Optional.ofNullable(item.createdBy)
+                        .map(createdBy -> createdBy.user)
+                        .map(user -> user.displayName)
+                        .orElse(null)) // 파일 소유자 이름 null 체크
+                .file_created_time(kstTime)
+                .file_path(Optional.ofNullable(item.parentReference)
+                        .map(reference -> reference.path)
+                        .orElse(null)) // 경로 null 체크
+                .site_id(Optional.ofNullable(item.parentReference)
+                        .map(reference -> reference.siteId)
+                        .orElse(null)) // Site ID null 체크
                 .build();
     }
+
+
 
     public StoredFile toStoredFileEntity(MsFileInfoDto file, String hash, String filePath) {
         if (file == null) {
@@ -126,7 +187,7 @@ public class MsFileMapper {
         if (eventType == null || eventType.isEmpty()) {
             eventType = "file_upload";
         }
-
+        log.info("created_activity_time : {}", file.getFile_created_time());
         return Activities.builder()
                 .user(user)
                 .eventType(eventType)
