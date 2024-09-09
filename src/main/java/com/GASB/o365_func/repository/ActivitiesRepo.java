@@ -108,4 +108,7 @@ public interface ActivitiesRepo extends JpaRepository<Activities, Long> {
 
     @Query("SELECT a FROM Activities a JOIN FileUploadTable fu ON a.saasFileId =fu.saasFileId WHERE a.saasFileId = :saasFileId AND a.eventType != 'file_delete' AND fu.deleted = false ORDER BY a.eventTs DESC LIMIT 1")
     Optional<Activities> findBySaasFileId(@Param("saasFileId") String saasFileId);
+
+    @Query("SELECT a FROM Activities a WHERE a.saasFileId = :saasFileId ORDER BY a.eventTs DESC LIMIT 1")
+    Optional<Activities> findRecentBySaasFileId(@Param("saasFileId") String saasFileId);
 }

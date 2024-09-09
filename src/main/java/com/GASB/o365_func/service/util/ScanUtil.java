@@ -1,4 +1,4 @@
-package com.GASB.o365_func.service;
+package com.GASB.o365_func.service.util;
 
 import com.GASB.o365_func.model.dto.MsFileInfoDto;
 import com.GASB.o365_func.model.entity.FileUploadTable;
