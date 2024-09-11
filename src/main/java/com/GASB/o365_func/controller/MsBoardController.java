@@ -17,9 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -143,6 +141,39 @@ public class MsBoardController {
             log.error("error_message : {}",e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Collections.singletonList(new MsRecentFileDTO("Error", "Server Error", "N/A", LocalDateTime.now())));
+        }
+    }
+
+
+    @PostMapping("/files/delete")
+    @ValidateJWT
+    public ResponseEntity<?> deleteFile(HttpServletRequest servletRequest, @RequestBody Map<String, String> request) {
+        // 아마 delete에는 해시값이 필요하지 않을까..?
+        try {
+            if (servletRequest.getAttribute("error") != null) {
+                String errorMessage = (String) servletRequest.getAttribute("error");
+                Map<String, String> errorResponse = new HashMap<>();
+                log.error("Error fetching user ranking in user-ranking api: {}", errorMessage);
+                errorResponse.put("status", "401");
+                errorResponse.put("error_message", errorMessage);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+            }
+            int fileUploadTableIdx = Integer.parseInt(request.get("id"));
+            String file_hash = request.get("file_hash");
+            Map<String, String> response = new HashMap<>();
+            if (msFileService.fileDelete(fileUploadTableIdx,file_hash)){
+                response.put("status","200");
+                response.put("message","file deleted successful");
+            } else {
+                response.put("status","404");
+                response.put("message","file deleted failed");
+            }
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            // log.error("Error fetching recent files", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonList(new TopUserDTO("Error", 0L, 0L, LocalDateTime.now())));
         }
     }
 
