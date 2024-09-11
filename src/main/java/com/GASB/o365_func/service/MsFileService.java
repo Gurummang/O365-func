@@ -4,6 +4,7 @@ import com.GASB.o365_func.model.dto.MsFileCountDto;
 import com.GASB.o365_func.model.dto.MsFileInfoDto;
 import com.GASB.o365_func.model.dto.MsFileSizeDto;
 import com.GASB.o365_func.model.dto.MsRecentFileDTO;
+import com.GASB.o365_func.model.entity.FileUploadTable;
 import com.GASB.o365_func.model.entity.OrgSaaS;
 import com.GASB.o365_func.model.mapper.MsFileMapper;
 import com.GASB.o365_func.repository.ActivitiesRepo;
@@ -120,5 +121,27 @@ public class MsFileService {
                 .maliciousFiles(storedFilesRepository.countMaliciousFiles(orgId, saasId))
                 .connectedAccounts(storedFilesRepository.countConnectedAccounts(orgId, saasId))
                 .build();
+    }
+
+    public boolean fileDelete(int idx, String fileHash) {
+        try {
+            // 파일 ID와 해시값을 통해 파일 조회
+            FileUploadTable targetFile = fileUploadTableRepo.findByIdAndFileHash(idx, fileHash).orElse(null);
+            if (targetFile == null) {
+                log.error("File not found or invalid: id={}, hash={}", idx, fileHash);
+                return false;
+            }
+            // 해당 파일이 Slack 파일인지 확인
+            if (orgSaaSRepo.findSaaSIdById(targetFile.getOrgSaaS().getId()) != 1) {
+                log.error("File is not a Slack file: id={}, saasId={}", idx, targetFile.getOrgSaaS().getId());
+                return false;
+            }
+            // Slack API를 통해 파일 삭제 요청
+            return msApiService.MsFileDeleteApi(targetFile.getOrgSaaS().getId(), targetFile.getSaasFileId());
+
+        } catch (Exception e) {
+            log.error("Error processing file delete: id={}, hash={}", idx, fileHash, e);
+            return false;
+        }
     }
 }
