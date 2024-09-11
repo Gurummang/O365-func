@@ -7,6 +7,7 @@ import com.GASB.o365_func.repository.MonitoredUsersRepo;
 import com.GASB.o365_func.repository.MsDeltaLinkRepo;
 import com.GASB.o365_func.repository.WorkSpaceConfigRepo;
 import com.GASB.o365_func.service.util.JwtDecoder;
+import com.microsoft.graph.core.ClientException;
 import com.microsoft.graph.http.GraphServiceException;
 import com.microsoft.graph.models.DriveItem;
 import com.microsoft.graph.models.DriveItemDeltaParameterSet;
@@ -351,5 +352,28 @@ public class MsApiService {
         // 예: 서명 검증, issuer 검증 등
 
         return true;
+    }
+
+    public boolean MsFileDeleteApi(int workspace_id, String itemId) {
+        try {
+            GraphServiceClient<?> graphServiceClient = createGraphClient(workspace_id);
+            // 드라이브와 아이템 ID를 사용하여 파일 삭제 요청 생성
+            CompletableFuture<DriveItem> future = graphServiceClient
+                    .me()
+                    .drive()
+                    .items(itemId)
+                    .buildRequest()
+                    .deleteAsync();
+
+            // 요청 완료 대기
+            future.join();
+            log.info("File deleted successfully from OneDrive: " + itemId);
+            return true;
+
+        } catch (ClientException e) {
+            // Microsoft Graph API 에러 처리
+            log.info("Error occurred while deleting file: " + e.getMessage());
+            return false;
+        }
     }
 }
