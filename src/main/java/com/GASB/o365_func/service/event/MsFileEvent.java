@@ -36,6 +36,8 @@ public class MsFileEvent {
     private final ActivitiesRepo fileActivityRepo;
     private final MonitoredUsersRepo monitoredUsersRepo;
     private final MessageSender messageSender;
+    private final StoredFileRepo storedFileRepo;
+    private final FileDownloadUtil fileDownloadUtil;
     private final MsDeltaLinkRepo msDeltaLinkRepo;
 
     public void handleFileEvent(Map<String, Object> payload, String event_type) {
@@ -116,7 +118,11 @@ public class MsFileEvent {
             long timestamp = Instant.now().getEpochSecond();
 
             Activities activities = copyForDelete(file_id, timestamp);
+            String file_hash = fileUploadRepository.findFileHashByFileId(file_id).orElse(null);
+            String s3Path = storedFileRepo.findSavePathByHash(file_hash).orElse(null);
             fileActivityRepo.save(activities);
+
+            fileDownloadUtil.deleteFileInS3(s3Path);
             // 2. file_upload 테이블에서 deleted 컬럼을 true로 변경
             fileUploadRepository.checkDelete(file_id);
             messageSender.sendGroupingMessage(activities.getId());
