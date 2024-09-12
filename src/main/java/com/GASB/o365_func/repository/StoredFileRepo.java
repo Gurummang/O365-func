@@ -38,7 +38,7 @@ public interface StoredFileRepo extends JpaRepository<StoredFile, Long> {
             "INNER JOIN FileUploadTable fu ON os.id = fu.orgSaaS.id " +
             "INNER JOIN StoredFile sf ON fu.hash = sf.saltedHash " +
             "INNER JOIN DlpReport dr ON sf.id = dr.storedFile.id " +
-            "WHERE o.id = :orgId AND s.id = :saasId AND dr.dlp = true")
+            "WHERE o.id = :orgId AND s.id = :saasId AND dr.infoCnt >= 1")
     Long getTotalDlpFileSize(@Param("orgId") int orgId, @Param("saasId") int saasId);
 
     @Query("SELECT sf.savePath FROM StoredFile sf WHERE sf.saltedHash = :saltedHash")
@@ -57,7 +57,7 @@ public interface StoredFileRepo extends JpaRepository<StoredFile, Long> {
             "INNER JOIN Saas s ON os.saas.id = s.id " +
             "INNER JOIN FileUploadTable fu ON os.id = fu.orgSaaS.id " +
             "INNER JOIN DlpReport dr ON fu.hash = dr.storedFile.saltedHash " +
-            "WHERE o.id = :orgId AND s.id = :saasId AND dr.dlp = true AND fu.deleted != true")
+            "WHERE o.id = :orgId AND s.id = :saasId AND dr.infoCnt >= 1 AND fu.deleted != true")
     int countSensitiveFiles(@Param("orgId") int orgId, @Param("saasId") int saasId);
 
     @Query("SELECT COUNT(fu.id) FROM Org o " +
