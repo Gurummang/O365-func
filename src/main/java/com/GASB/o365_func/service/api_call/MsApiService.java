@@ -3,6 +3,7 @@ package com.GASB.o365_func.service.api_call;
 import com.GASB.o365_func.model.dto.MsFileInfoDto;
 import com.GASB.o365_func.model.entity.MonitoredUsers;
 import com.GASB.o365_func.model.entity.MsDeltaLink;
+import com.GASB.o365_func.repository.ActivitiesRepo;
 import com.GASB.o365_func.repository.MonitoredUsersRepo;
 import com.GASB.o365_func.repository.MsDeltaLinkRepo;
 import com.GASB.o365_func.repository.WorkSpaceConfigRepo;
@@ -39,16 +40,17 @@ public class MsApiService {
     private final WorkSpaceConfigRepo workspaceConfigRepo;
     private final MsDeltaLinkRepo msDeltaLinkRepo;
 
+    private final ActivitiesRepo activitiesRepo;
     private GraphServiceClient<?> graphClient;
     @Autowired
-    public MsApiService(MonitoredUsersRepo monitoredUsersRepo, SimpleAuthProvider simpleAuthProvider, WorkSpaceConfigRepo workspaceConfigRepo, MsDeltaLinkRepo msDeltaLinkRepo
-                        /*@Value("${onedrive.client.id}") String clientId,
-                        @Value("${onedrive.client.secret}") String clientSecret,
-                        @Value("${onedrive.tenant.id}") String tenantId*/) {
+    public MsApiService(MonitoredUsersRepo monitoredUsersRepo, SimpleAuthProvider simpleAuthProvider,
+                        WorkSpaceConfigRepo workspaceConfigRepo, MsDeltaLinkRepo msDeltaLinkRepo,
+                        ActivitiesRepo activitiesRepo) {
         this.simpleAuthProvider = simpleAuthProvider;
         this.monitoredUsersRepo = monitoredUsersRepo;
         this.workspaceConfigRepo = workspaceConfigRepo;
         this.msDeltaLinkRepo = msDeltaLinkRepo;
+        this.activitiesRepo = activitiesRepo;
 //        // ClientSecretCredential을 사용하여 자격 증명 생성
 //        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
 //                .clientId(clientId)
@@ -357,9 +359,11 @@ public class MsApiService {
     public boolean MsFileDeleteApi(int workspace_id, String itemId) {
         try {
             GraphServiceClient<?> graphServiceClient = createGraphClient(workspace_id);
+
+            String user_id = activitiesRepo.findUserIdByFileId(itemId).orElse(null);
             // 드라이브와 아이템 ID를 사용하여 파일 삭제 요청 생성
             CompletableFuture<DriveItem> future = graphServiceClient
-                    .me()
+                    .users(Objects.requireNonNull(user_id))
                     .drive()
                     .items(itemId)
                     .buildRequest()
