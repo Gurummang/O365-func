@@ -132,7 +132,7 @@ public class MsFileService {
                 return false;
             }
             // 해당 파일이 Slack 파일인지 확인
-            if (orgSaaSRepo.findSaaSIdById(targetFile.getOrgSaaS().getId()) != 1) {
+            if (orgSaaSRepo.findSaaSIdById(targetFile.getOrgSaaS().getId()) != 3) {
                 log.error("File is not a Slack file: id={}, saasId={}", idx, targetFile.getOrgSaaS().getId());
                 return false;
             }
