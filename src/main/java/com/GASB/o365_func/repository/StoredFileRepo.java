@@ -76,4 +76,7 @@ public interface StoredFileRepo extends JpaRepository<StoredFile, Long> {
     int countConnectedAccounts(@Param("orgId") int orgId, @Param("saasId") int saasId);
 
     boolean existsBySaltedHash(String saltedHash);
+
+    @Query("SELECT st.savePath FROM StoredFile st WHERE st.saltedHash = :hash")
+    Optional<String> findSavePathByHash(@Param("hash") String hash);
 }
