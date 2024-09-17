@@ -27,16 +27,16 @@ public class MessageSender {
 
     public void sendMessage(Long message) {
         rabbitTemplate.convertAndSend(properties.getFileRoutingKey(),message);
-        System.out.println("Sent message to default queue: " + message);
+        log.info("Sent message to default queue: " + message);
     }
 
     public void sendGroupingMessage(Long message) {
         groupingRabbitTemplate.convertAndSend(message);
-        System.out.println("Sent message to grouping queue: " + message);
+        log.info("Sent message to grouping queue: " + message);
     }
 
     public void sendMessageToQueue(Long message, String queueName) {
         rabbitTemplate.convertAndSend(queueName, message);
-        System.out.println("Sent message to queue " + queueName + ": " + message);
+        log.info("Sent message to queue " + queueName + ": " + message);
     }
 }
