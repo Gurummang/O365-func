@@ -310,6 +310,7 @@ public class FileDownloadUtil {
         try {
             if (!fileUploadTableRepo.existsBySaasFileIdAndTimestamp(fileUploadTableObject.getSaasFileId(), fileUploadTableObject.getTimestamp())){
                 fileUploadTableRepo.save(fileUploadTableObject);
+                messageSender.sendMessage(fileUploadTableObject.getId());
                 scanUtil.scanFile(file_data, fileUploadTableObject, file_path);
             } else {
                 log.warn("Duplicate file upload detected and ignored: {}", file_data.getFile_name());
@@ -324,7 +325,6 @@ public class FileDownloadUtil {
             if (!storedFileRepo.existsBySaltedHash(storedFile.getSaltedHash())) {
                 try {
                     storedFileRepo.save(storedFile);
-                    messageSender.sendMessage(storedFile.getId());
                     log.info("File uploaded successfully: {}", file_name);
                 } catch (DataIntegrityViolationException e) {
                     log.warn("Duplicate entry detected and ignored: {}", file_name);
