@@ -45,14 +45,14 @@ public interface StoredFileRepo extends JpaRepository<StoredFile, Long> {
     Optional<String> findSavePathBySaltedHash(@Param("saltedHash") String saltedHash);
 
 
-    @Query("SELECT COUNT(fu.id) FROM Org o "+
+    @Query("SELECT COUNT(DISTINCT fu.id) FROM Org o "+
             "INNER JOIN OrgSaaS os ON o.id = os.org.id "+
             "INNER JOIN Saas s ON os.saas.id = s.id "+
             "INNER JOIN FileUploadTable fu ON os.id = fu.orgSaaS.id "+
             "WHERE o.id = :orgId AND s.id = :saasId AND fu.deleted != true")
     int countTotalFiles(@Param("orgId") int orgId, @Param("saasId") int saasId);
 
-    @Query("SELECT COUNT(fu.id) FROM Org o " +
+    @Query("SELECT COUNT(DISTINCT fu.id) FROM Org o " +
             "INNER JOIN OrgSaaS os ON o.id = os.org.id " +
             "INNER JOIN Saas s ON os.saas.id = s.id " +
             "INNER JOIN FileUploadTable fu ON os.id = fu.orgSaaS.id " +
@@ -60,7 +60,7 @@ public interface StoredFileRepo extends JpaRepository<StoredFile, Long> {
             "WHERE o.id = :orgId AND s.id = :saasId AND dr.infoCnt >= 1 AND fu.deleted != true")
     int countSensitiveFiles(@Param("orgId") int orgId, @Param("saasId") int saasId);
 
-    @Query("SELECT COUNT(fu.id) FROM Org o " +
+    @Query("SELECT COUNT(DISTINCT fu.id) FROM Org o " +
             "INNER JOIN OrgSaaS os ON o.id = os.org.id " +
             "INNER JOIN Saas s ON os.saas.id = s.id " +
             "INNER JOIN FileUploadTable fu ON os.id = fu.orgSaaS.id " +
@@ -68,7 +68,7 @@ public interface StoredFileRepo extends JpaRepository<StoredFile, Long> {
             "WHERE o.id = :orgId AND s.id = :saasId AND vr.threatLabel != 'none' AND fu.deleted != true")
     int countMaliciousFiles(@Param("orgId") int orgId, @Param("saasId") int saasId);
 
-    @Query("SELECT COUNT(mu.userId) FROM Org o " +
+    @Query("SELECT COUNT(DISTINCT mu.userId) FROM Org o " +
             "INNER JOIN OrgSaaS os ON o.id = os.org.id " +
             "INNER JOIN Saas s ON os.saas.id = s.id " +
             "INNER JOIN MonitoredUsers mu ON os.id = mu.orgSaaS.id " +
