@@ -147,9 +147,9 @@ public class MsBoardController {
 
     @PostMapping("/files/delete")
     @ValidateJWT
-    public ResponseEntity<?> deleteFile(HttpServletRequest servletRequest, @RequestBody Map<String, String> request) {
-        // 아마 delete에는 해시값이 필요하지 않을까..?
+    public ResponseEntity<?> deleteFiles(HttpServletRequest servletRequest, @RequestBody List<Map<String, String>> requests) {
         try {
+            // JWT 인증 오류 처리
             if (servletRequest.getAttribute("error") != null) {
                 String errorMessage = (String) servletRequest.getAttribute("error");
                 Map<String, String> errorResponse = new HashMap<>();
@@ -158,23 +158,39 @@ public class MsBoardController {
                 errorResponse.put("error_message", errorMessage);
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
             }
-            int fileUploadTableIdx = Integer.parseInt(request.get("id"));
-            String file_hash = request.get("file_hash");
+
             Map<String, String> response = new HashMap<>();
-            if (msFileService.fileDelete(fileUploadTableIdx,file_hash)){
-                response.put("status","200");
-                response.put("message","file deleted successful");
+            boolean allSuccess = true;
+
+            // 요청 받은 파일 목록 처리
+            for (Map<String, String> request : requests) {
+                int fileUploadTableIdx = Integer.parseInt(request.get("id"));
+                String file_name = request.get("file_name");
+                String path = request.get("path");
+
+                // 파일 삭제 시도
+                if (!msFileService.fileDelete(fileUploadTableIdx, file_name, path)) {
+                    allSuccess = false;
+                    log.error("Failed to delete file with id: {}", fileUploadTableIdx);
+                }
+            }
+
+            // 전체 성공 여부에 따른 응답
+            if (allSuccess) {
+                response.put("status", "200");
+                response.put("message", "All files deleted successfully");
             } else {
-                response.put("status","404");
-                response.put("message","file deleted failed");
+                response.put("status", "404");
+                response.put("message", "Some files failed to delete");
             }
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            // log.error("Error fetching recent files", e);
+            log.error("Error deleting files", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Collections.singletonList(new TopUserDTO("Error", 0L, 0L, LocalDateTime.now())));
+                    .body(Collections.singletonMap("message", "Internal server error"));
         }
     }
+
 
 }

@@ -36,8 +36,8 @@ public interface FileUploadTableRepo extends JpaRepository<FileUploadTable, Long
     boolean existsBySaasFileIdAndTimestamp(String saasFileId, LocalDateTime timestamp);
 
 
-    @Query("SELECT fu.orgSaaS.id FROM FileUploadTable fu WHERE fu.saasFileId = :fileId ORDER BY fu.timestamp DESC LIMIT 1")
-    int findLatestOrgSaaSIdByFileId(@Param("fileId") String fileId);
+    @Query("SELECT fu FROM FileUploadTable fu WHERE fu.id = :idx")
+    Optional<FileUploadTable> findById(@Param("idx")int idx);
 
     @Query("SELECT fu.hash FROM FileUploadTable fu WHERE fu.saasFileId = :saas_file_id")
     Optional<String> findFileHashByFileId(@Param("saas_file_id")String file_id);

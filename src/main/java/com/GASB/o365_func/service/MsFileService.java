@@ -4,6 +4,7 @@ import com.GASB.o365_func.model.dto.MsFileCountDto;
 import com.GASB.o365_func.model.dto.MsFileInfoDto;
 import com.GASB.o365_func.model.dto.MsFileSizeDto;
 import com.GASB.o365_func.model.dto.MsRecentFileDTO;
+import com.GASB.o365_func.model.entity.Activities;
 import com.GASB.o365_func.model.entity.FileUploadTable;
 import com.GASB.o365_func.model.entity.OrgSaaS;
 import com.GASB.o365_func.model.mapper.MsFileMapper;
@@ -123,25 +124,35 @@ public class MsFileService {
                 .build();
     }
 
-    public boolean fileDelete(int idx, String fileHash) {
+    public boolean fileDelete(int idx, String file_name, String path) {
         try {
             // 파일 ID와 해시값을 통해 파일 조회
-            FileUploadTable targetFile = fileUploadTableRepo.findByIdAndFileHash(idx, fileHash).orElse(null);
-            if (targetFile == null) {
-                log.error("File not found or invalid: id={}, hash={}", idx, fileHash);
+            if (!checkFile(idx, file_name, path)) {
                 return false;
             }
-            // 해당 파일이 Slack 파일인지 확인
-            if (orgSaaSRepo.findSaaSIdById(targetFile.getOrgSaaS().getId()) != 3) {
-                log.error("File is not a Slack file: id={}, saasId={}", idx, targetFile.getOrgSaaS().getId());
-                return false;
-            }
+            FileUploadTable targetFile = fileUploadTableRepo.findById(idx).orElse(null);
             // Slack API를 통해 파일 삭제 요청
-            return msApiService.MsFileDeleteApi(targetFile.getOrgSaaS().getId(), targetFile.getSaasFileId());
+            return msApiService.MsFileDeleteApi(Objects.requireNonNull(targetFile).getOrgSaaS().getId(), targetFile.getSaasFileId());
 
         } catch (Exception e) {
-            log.error("Error processing file delete: id={}, hash={}", idx, fileHash, e);
+            log.error("Error processing file delete: id={}, name={}", idx, file_name, e);
             return false;
         }
+    }
+
+    private boolean checkFile(int idx, String file_name, String path){
+
+        FileUploadTable targetFile = fileUploadTableRepo.findById(idx).orElse(null);
+        Activities targetFileActivity = activitiesRepo.findBySaasFileId(Objects.requireNonNull(targetFile).getSaasFileId()).orElse(null);
+        String tmp_file_name = Objects.requireNonNull(targetFileActivity).getFileName();
+        if (!tmp_file_name.equals(file_name)) {
+            log.error("File name not matched: id={}, name={}", idx, file_name);
+            return false;
+        }
+        if (orgSaaSRepo.findSaaSIdById(targetFile.getOrgSaaS().getId()) != 3) {
+            log.error("File is not a Slack file: id={}, saasId={}", idx, targetFile.getOrgSaaS().getId());
+            return false;
+        }
+        return true;
     }
 }
