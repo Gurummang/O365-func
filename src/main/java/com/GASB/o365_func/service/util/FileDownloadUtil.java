@@ -130,9 +130,19 @@ public class FileDownloadUtil {
             Path filePath = Paths.get(dirPath, file.getFile_name());
             File targetFile = filePath.toFile();
 
-            // 디렉토리가 존재하지 않으면 생성
-            if (!targetFile.getParentFile().exists()) {
-                targetFile.getParentFile().mkdirs();
+            File parentDir = targetFile.getParentFile();
+            if (parentDir == null) {
+                log.error("Failed to get parent directory for targetFile: {}", targetFile.getAbsolutePath());
+                throw new IllegalStateException("Parent directory cannot be determined");
+            }
+
+            // 부모 디렉토리가 존재하지 않으면 생성 시도
+            if (!parentDir.exists()) {
+                boolean dirCreated = parentDir.mkdirs();
+                if (!dirCreated) {
+                    log.error("Failed to create parent directories for file: {}", targetFile.getAbsolutePath());
+                    throw new IllegalStateException("Failed to create parent directories");
+                }
             }
 
             // 파일 저장
@@ -290,9 +300,26 @@ public class FileDownloadUtil {
                                         LocalDateTime changeTime, String event_type, MonitoredUsers user,
                                         String uploadedChannelPath, String tlsh, String filePath) {
 
+        if (file == null) {
+            log.error("Invalid file data: null");
+            return;
+        }
+
         StoredFile storedFile = msFileMapper.toStoredFileEntity(file, hash, s3Key);
+        if (storedFile == null) {
+            log.error("Error creating stored file entity: {}", file.getFile_name());
+            return;
+        }
         FileUploadTable fileUploadTableObject = msFileMapper.toFileUploadEntity(file, orgSaaSObject, hash, changeTime);
+        if (fileUploadTableObject == null) {
+            log.error("Error creating file upload entity: {}", file.getFile_name());
+            return;
+        }
         Activities activity = msFileMapper.toActivityEntity(file, event_type, user, uploadedChannelPath,tlsh);
+        if (activity == null) {
+            log.error("Error creating activity entity: {}", file.getFile_name());
+            return;
+        }
 
         synchronized (this) {
             saveActivity(activity, file.getFile_name());
