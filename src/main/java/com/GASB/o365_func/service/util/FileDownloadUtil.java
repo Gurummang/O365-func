@@ -130,9 +130,19 @@ public class FileDownloadUtil {
             Path filePath = Paths.get(dirPath, file.getFile_name());
             File targetFile = filePath.toFile();
 
-            // 디렉토리가 존재하지 않으면 생성
-            if (!targetFile.getParentFile().exists()) {
-                targetFile.getParentFile().mkdirs();
+            File parentDir = targetFile.getParentFile();
+            if (parentDir == null) {
+                log.error("Failed to get parent directory for targetFile: {}", targetFile.getAbsolutePath());
+                throw new IllegalStateException("Parent directory cannot be determined");
+            }
+
+            // 부모 디렉토리가 존재하지 않으면 생성 시도
+            if (!parentDir.exists()) {
+                boolean dirCreated = parentDir.mkdirs();
+                if (!dirCreated) {
+                    log.error("Failed to create parent directories for file: {}", targetFile.getAbsolutePath());
+                    throw new IllegalStateException("Failed to create parent directories");
+                }
             }
 
             // 파일 저장
@@ -238,9 +248,10 @@ public class FileDownloadUtil {
 
     //TLSH 해시 계산
     private Tlsh computeTlsHash(byte[] fileData) {
-        if (fileData == null) {
-            throw new IllegalArgumentException("fileData cannot be null");
+        if (fileData == null || fileData.length == 0) {
+            throw new IllegalArgumentException("fileData cannot be null or empty");
         }
+
         final int BUFFER_SIZE = 4096;
         TlshCreator tlshCreator = new TlshCreator();
 
@@ -248,6 +259,7 @@ public class FileDownloadUtil {
             byte[] buf = new byte[BUFFER_SIZE];
             int bytesRead;
             while ((bytesRead = is.read(buf)) != -1) {
+                // buf 자체의 null 체크는 불필요, 내부적으로 초기화된 배열
                 tlshCreator.update(buf, 0, bytesRead);
             }
         } catch (IOException e) {
@@ -256,12 +268,18 @@ public class FileDownloadUtil {
         }
 
         try {
-            return tlshCreator.getHash();
+            Tlsh hash = tlshCreator.getHash();
+            if (hash == null) {
+                log.warn("TLSH hash is null, calculation may have failed");
+                return null;
+            }
+            return hash;
         } catch (IllegalStateException e) {
             log.warn("TLSH not valid; either not enough data or data has too little variance");
             return null; // TLSH 계산 실패 시 null 반환
         }
     }
+
 
 
     private LocalDateTime extractChangeTime(String event_type) {
@@ -282,9 +300,26 @@ public class FileDownloadUtil {
                                         LocalDateTime changeTime, String event_type, MonitoredUsers user,
                                         String uploadedChannelPath, String tlsh, String filePath) {
 
+        if (file == null) {
+            log.error("Invalid file data: null");
+            return;
+        }
+
         StoredFile storedFile = msFileMapper.toStoredFileEntity(file, hash, s3Key);
+        if (storedFile == null) {
+            log.error("Error creating stored file entity: {}", file.getFile_name());
+            return;
+        }
         FileUploadTable fileUploadTableObject = msFileMapper.toFileUploadEntity(file, orgSaaSObject, hash, changeTime);
+        if (fileUploadTableObject == null) {
+            log.error("Error creating file upload entity: {}", file.getFile_name());
+            return;
+        }
         Activities activity = msFileMapper.toActivityEntity(file, event_type, user, uploadedChannelPath,tlsh);
+        if (activity == null) {
+            log.error("Error creating activity entity: {}", file.getFile_name());
+            return;
+        }
 
         synchronized (this) {
             saveActivity(activity, file.getFile_name());
