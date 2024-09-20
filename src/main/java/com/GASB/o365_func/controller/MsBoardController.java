@@ -12,13 +12,17 @@ import com.GASB.o365_func.repository.SaasRepo;
 import com.GASB.o365_func.repository.StoredFileRepo;
 import com.GASB.o365_func.service.MsFileService;
 import com.GASB.o365_func.service.MsUserService;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.math3.exception.NullArgumentException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashMap;
@@ -69,80 +73,90 @@ public class MsBoardController {
     @ValidateJWT
     public ResponseEntity<?> fetchFileCount(HttpServletRequest servletRequest) {
         try {
+            // JWT 인증 오류 처리
             if (servletRequest.getAttribute("error") != null) {
                 String errorMessage = (String) servletRequest.getAttribute("error");
                 Map<String, String> errorResponse = new HashMap<>();
-                log.error("Error fetching file count : {}", errorMessage);
+                log.error("Unauthorized access while fetching file count: {}", errorMessage);
                 errorResponse.put("status", "401");
                 errorResponse.put("error_message", errorMessage);
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
             }
+
+            // 이메일 및 조직 ID 가져오기
             String email = (String) servletRequest.getAttribute("email");
+            if (email == null) {
+                log.warn("Email attribute is missing in the request.");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Collections.singletonMap("message", "Email is missing"));
+            }
+
+            // 조직 ID 가져오기
             int orgId = adminUsersRepo.findByEmail(email);
-            MsFileCountDto msFileCountDto = msFileService.MsFileCountSum(orgId,3);
+            MsFileCountDto msFileCountDto = msFileService.MsFileCountSum(orgId, 3);
             return ResponseEntity.ok(msFileCountDto);
-        } catch (Exception e) {
-            log.error("Error fetching file count");
-            log.error("error_message : {} ", e.getMessage());
+
+        } catch (NullPointerException e) {
+            // NullPointerException 처리
+            log.error("NullPointerException occurred while fetching file count", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new MsFileCountDto(0,0,0,0));
+                    .body(new MsFileCountDto(0, 0, 0, 0));
+
+        } catch (ClassCastException e) {
+            // ClassCastException 처리
+            log.error("ClassCastException occurred while fetching file count. Incorrect attribute type?", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new MsFileCountDto(0, 0, 0, 0));
+
+        } catch (Exception e) {
+            // 모든 다른 예외 처리
+            log.error("Unexpected error occurred while fetching file count", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new MsFileCountDto(0, 0, 0, 0));
         }
     }
+
 
 
     @GetMapping("/files/recent")
     @ValidateJWT
     public ResponseEntity<?> fetchRecentFiles(HttpServletRequest servletRequest) {
         try {
+            // JWT 인증 오류 처리
             if (servletRequest.getAttribute("error") != null) {
                 String errorMessage = (String) servletRequest.getAttribute("error");
                 Map<String, String> errorResponse = new HashMap<>();
-                log.error("Error fetching recent file api: {}", errorMessage);
+                log.error("Unauthorized access while fetching recent files: {}", errorMessage);
                 errorResponse.put("status", "401");
                 errorResponse.put("error_message", errorMessage);
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
             }
+
+            // 이메일과 조직 ID 가져오기
             String email = (String) servletRequest.getAttribute("email");
+            if (email == null) {
+                log.warn("Email attribute is missing in the request.");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Collections.singletonMap("message", "Email is missing"));
+            }
+
             int orgId = adminUsersRepo.findByEmail(email);
-            Saas saasObjcet = saasRepo.findById(3).orElse(null);
-//            Saas saasObject = saasRepo.findBySaasName("o365").orElse(null);
-            List<MsRecentFileDTO> recentFiles = msFileService.msRecentFiles(orgId, saasObjcet.getId().intValue());
+            Saas saasObject = saasRepo.findById(3).orElseThrow(() -> new EntityNotFoundException("Saas not found"));
+
+            List<MsRecentFileDTO> recentFiles = msFileService.msRecentFiles(orgId, saasObject.getId().intValue());
             return ResponseEntity.ok(recentFiles);
-        } catch (Exception e){
-            log.error("Error fetching recent files");
-            log.error("error_message : {} ", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Collections.singletonList(new MsRecentFileDTO("Error", "Server Error", "N/A", LocalDateTime.now())));
-        }
-    }
 
-
-    @GetMapping("/user-ranking")
-    @ValidateJWT
-    public ResponseEntity<?> fetchUserRanking(HttpServletRequest servletRequest) {
-        try {
-            if (servletRequest.getAttribute("error") != null) {
-                String errorMessage = (String) servletRequest.getAttribute("error");
-                Map<String, String> errorResponse = new HashMap<>();
-                log.error("Error fetching user ranking in user-ranking api: {}", errorMessage);
-                errorResponse.put("status", "401");
-                errorResponse.put("error_message", errorMessage);
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
-            }
-            String email = (String) servletRequest.getAttribute("email");
-            int orgId = adminUsersRepo.findByEmail(email);
-            Saas saasObjcet = saasRepo.findById(3).orElse(null);
-//            Saas saasObject = saasRepo.findBySaasName("o365").orElse(null);
-            CompletableFuture<List<TopUserDTO>> future = msUserService.getTopUsersAsync(orgId, saasObjcet.getId().intValue());
-            List<TopUserDTO> topuser = future.get();
-            return ResponseEntity.ok(topuser);
+        } catch (EntityNotFoundException e) {
+            log.error("Saas entity not found", e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Collections.singletonMap("message", "Saas entity not found"));
         } catch (Exception e) {
-            log.error("Error fetching user ranking");
-            log.error("error_message : {}",e.getMessage());
+            log.error("Unexpected error fetching recent files", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Collections.singletonList(new MsRecentFileDTO("Error", "Server Error", "N/A", LocalDateTime.now())));
         }
     }
+
 
 
     @PostMapping("/files/delete")
@@ -164,14 +178,24 @@ public class MsBoardController {
 
             // 요청 받은 파일 목록 처리
             for (Map<String, String> request : requests) {
-                int fileUploadTableIdx = Integer.parseInt(request.get("id"));
-                String file_name = request.get("file_name");
-                String path = request.get("path");
+                try {
+                    int fileUploadTableIdx = Integer.parseInt(request.get("id"));
+                    String file_name = request.get("file_name");
+                    String path = request.get("path");
 
-                // 파일 삭제 시도
-                if (!msFileService.fileDelete(fileUploadTableIdx, file_name, path)) {
-                    allSuccess = false;
-                    log.error("Failed to delete file with id: {}", fileUploadTableIdx);
+                    // 파일 삭제 시도
+                    if (!msFileService.fileDelete(fileUploadTableIdx, file_name, path)) {
+                        allSuccess = false;
+                        log.error("Failed to delete file with id: {}", fileUploadTableIdx);
+                    }
+                } catch (NumberFormatException e) {
+                    log.error("Invalid file ID format: {}", request.get("id"), e);
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(Collections.singletonMap("message", "Invalid file ID format"));
+                } catch (NullPointerException e) {
+                    log.error("Missing file parameters: {}", request, e);
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(Collections.singletonMap("message", "Missing file parameters"));
                 }
             }
 
@@ -186,11 +210,12 @@ public class MsBoardController {
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            log.error("Error deleting files", e);
+            log.error("Unexpected error deleting files", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Collections.singletonMap("message", "Internal server error"));
         }
     }
+
 
 
 }
