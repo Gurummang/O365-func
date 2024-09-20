@@ -360,10 +360,17 @@ public class MsApiService {
         try {
             GraphServiceClient<?> graphServiceClient = createGraphClient(workspace_id);
 
-            String user_id = activitiesRepo.findUserIdByFileId(itemId).orElse(null);
+            // 파일 ID로 사용자 ID 조회
+            Optional<String> optionalUserId = activitiesRepo.findUserIdByFileId(itemId);
+            if (optionalUserId.isEmpty()) {
+                log.warn("User ID not found for itemId: " + itemId);
+                return false;  // 사용자 ID가 없을 경우 false 반환
+            }
+            String user_id = optionalUserId.get();
+
             // 드라이브와 아이템 ID를 사용하여 파일 삭제 요청 생성
             CompletableFuture<DriveItem> future = graphServiceClient
-                    .users(Objects.requireNonNull(user_id))
+                    .users(user_id)  // 널 체크 후 user_id 사용
                     .drive()
                     .items(itemId)
                     .buildRequest()
@@ -376,8 +383,9 @@ public class MsApiService {
 
         } catch (ClientException e) {
             // Microsoft Graph API 에러 처리
-            log.info("Error occurred while deleting file: " + e.getMessage());
+            log.error("Error occurred while deleting file: " + e.getMessage(), e);
             return false;
         }
     }
+
 }

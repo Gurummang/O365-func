@@ -71,11 +71,16 @@ public class ScanUtil {
     @Async
     @Transactional
     protected void addData(FileUploadTable fileUploadTableObject, boolean correct, String mimeType, String signature, String extension) {
-        if (fileUploadTableObject == null || fileUploadTableObject.getId() == null) {
-            log.error("Invalid file upload object: {}, {}", fileUploadTableObject, fileUploadTableObject.getId());
-
-            throw new IllegalArgumentException("Invalid file upload object");
+        if (fileUploadTableObject == null) {
+            log.error("Invalid file upload object: null");
+            throw new IllegalArgumentException("fileUploadTableObject cannot be null");
         }
+
+        if (fileUploadTableObject.getId() == null) {
+            log.error("Invalid file upload object ID: null for object: {}", fileUploadTableObject);
+            throw new IllegalArgumentException("fileUploadTableObject ID cannot be null");
+        }
+
         TypeScan typeScan = TypeScan.builder()
                 .file_upload(fileUploadTableObject)
                 .correct(correct)
