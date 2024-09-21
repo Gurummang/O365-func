@@ -124,6 +124,32 @@ public class MsBoardController {
     }
 
 
+    @GetMapping("/user-ranking")
+    @ValidateJWT
+    public ResponseEntity<?> fetchUserRanking(HttpServletRequest servletRequest) {
+        try {
+            if (servletRequest.getAttribute("error") != null) {
+                String errorMessage = (String) servletRequest.getAttribute("error");
+                Map<String, String> errorResponse = new HashMap<>();
+                log.error("Error fetching user ranking in user-ranking api: {}", errorMessage);
+                errorResponse.put("status", "401");
+                errorResponse.put("error_message", errorMessage);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+            }
+            String email = (String) servletRequest.getAttribute("email");
+            int orgId = adminUsersRepo.findByEmail(email);
+            Saas saasObjcet = saasRepo.findById(3).orElse(null);
+//            Saas saasObject = saasRepo.findBySaasName("o365").orElse(null);
+            CompletableFuture<List<TopUserDTO>> future = msUserService.getTopUsersAsync(orgId, saasObjcet.getId().intValue());
+            List<TopUserDTO> topuser = future.get();
+            return ResponseEntity.ok(topuser);
+        } catch (Exception e) {
+            log.error("Error fetching user ranking");
+            log.error("error_message : {}",e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonList(new MsRecentFileDTO("Error", "Server Error", "N/A", LocalDateTime.now())));
+        }
+    }
 
     @GetMapping("/files/recent")
     @ValidateJWT
