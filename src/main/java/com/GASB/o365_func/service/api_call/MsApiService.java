@@ -369,13 +369,37 @@ public class MsApiService {
             String user_id = optionalUserId.get();
 
             // 드라이브와 아이템 ID를 사용하여 파일 삭제 요청 생성
-            CompletableFuture<DriveItem> future = graphServiceClient
-                    .users(user_id)  // 널 체크 후 user_id 사용
-                    .drive()
-                    .items(itemId)
-                    .buildRequest()
-                    .deleteAsync();
+            CompletableFuture<DriveItem> future = null;
 
+            if (graphServiceClient != null && user_id != null) {
+                UserRequestBuilder user = graphServiceClient.users(user_id);
+                if (user != null) {
+                    DriveRequestBuilder driveRequest = user.drive();
+                    if (driveRequest != null) {
+                        DriveItemRequestBuilder itemRequest = driveRequest.items(itemId);
+                        if (itemRequest != null) {
+                            future = itemRequest
+                                    .buildRequest()
+                                    .deleteAsync();
+                        } else {
+                            // itemRequest가 null인 경우 처리
+                            System.out.println("Drive item 요청이 null입니다.");
+                        }
+                    } else {
+                        // driveRequest가 null인 경우 처리
+                        System.out.println("Drive 요청이 null입니다.");
+                    }
+                } else {
+                    // user가 null인 경우 처리
+                    System.out.println("User가 null입니다.");
+                }
+            } else {
+                // graphServiceClient 또는 user_id가 null인 경우 처리
+                System.out.println("graphServiceClient 또는 user_id가 null입니다.");
+            }
+            if (future == null){
+                return false;
+            }
             // 요청 완료 대기
             future.join();
             log.info("File deleted successfully from OneDrive: " + itemId);

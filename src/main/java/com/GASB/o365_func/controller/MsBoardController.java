@@ -60,11 +60,18 @@ public class MsBoardController {
             int orgId = adminUsersRepo.findByEmail(email);;
             MsFileSizeDto msFileSizeDto = msFileService.sumOfMsFileSize(orgId,3);
             return ResponseEntity.ok(msFileSizeDto);
-        } catch (Exception e){
-            log.error("Error fetching file size");
-            log.error("Error Message : {}", e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.error("Error fetching file size: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new MsFileSizeDto(0,0,0));
+                    .body(Collections.singletonMap("message", "Error fetching file size"));
+        } catch (NullPointerException e) {
+            log.error("Error fetching file size: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("message", "Error fetching file size"));
+        } catch (Exception e) {
+            log.error("Error fetching file size: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("message", "Error fetching file size"));
         }
     }
 
@@ -117,6 +124,32 @@ public class MsBoardController {
     }
 
 
+    @GetMapping("/user-ranking")
+    @ValidateJWT
+    public ResponseEntity<?> fetchUserRanking(HttpServletRequest servletRequest) {
+        try {
+            if (servletRequest.getAttribute("error") != null) {
+                String errorMessage = (String) servletRequest.getAttribute("error");
+                Map<String, String> errorResponse = new HashMap<>();
+                log.error("Error fetching user ranking in user-ranking api: {}", errorMessage);
+                errorResponse.put("status", "401");
+                errorResponse.put("error_message", errorMessage);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+            }
+            String email = (String) servletRequest.getAttribute("email");
+            int orgId = adminUsersRepo.findByEmail(email);
+            Saas saasObjcet = saasRepo.findById(3).orElse(null);
+//            Saas saasObject = saasRepo.findBySaasName("o365").orElse(null);
+            CompletableFuture<List<TopUserDTO>> future = msUserService.getTopUsersAsync(orgId, saasObjcet.getId().intValue());
+            List<TopUserDTO> topuser = future.get();
+            return ResponseEntity.ok(topuser);
+        } catch (Exception e) {
+            log.error("Error fetching user ranking");
+            log.error("error_message : {}",e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonList(new MsRecentFileDTO("Error", "Server Error", "N/A", LocalDateTime.now())));
+        }
+    }
 
     @GetMapping("/files/recent")
     @ValidateJWT
@@ -209,10 +242,18 @@ public class MsBoardController {
             }
 
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("Unexpected error deleting files", e);
+        } catch (NullPointerException e) {
+            log.error("Error deleting files: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Collections.singletonMap("message", "Internal server error"));
+                    .body(Collections.singletonMap("message", "Error deleting files"));
+        } catch (IllegalArgumentException e){
+            log.error("Error deleting files: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("message", "Error deleting files"));
+        } catch (Exception e) {
+            log.error("Error deleting files: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("message", "Error deleting files"));
         }
     }
 

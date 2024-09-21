@@ -7,6 +7,7 @@ import com.GASB.o365_func.repository.TypeScanRepo;
 import com.GASB.o365_func.service.enumset.HeaderSignature;
 import com.GASB.o365_func.service.enumset.MimeType;
 import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.Null;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 
 @Slf4j
 @Service
@@ -62,9 +64,12 @@ public class ScanUtil {
                     addData(fileUploadTableObject, isMatched, mimeType, fileSignature, fileExtension);
                 }
             }
+        } catch (IllegalArgumentException e){
+            log.error("Error scanning file: {}", e.getMessage(), e);
+        } catch (NullPointerException e){
+            log.error("Error scanning file: {}", e.getMessage(), e);
         } catch (Exception e){
-            log.error("Error occurred while scanning file: {}", fileData.getFile_name());
-            log.error("Error message: {}", e.getMessage());
+            log.error("Error scanning file: {}", e.getMessage(), e);
         }
     }
 
@@ -121,9 +126,15 @@ public class ScanUtil {
                 log.error("Could not read the complete file signature");
                 return "unknown";
             }
+        } catch (NullPointerException e) {
+            log.error("Error reading file signature: {}", e.getMessage(), e);
+            return null;
+        } catch (IOException e){
+            log.error("Error reading file signature: {}", e.getMessage(), e);
+            return null;
         } catch (Exception e) {
-            log.error("Error reading file signature", e);
-            return "unknown";
+            log.error("Error reading file signature: {}", e.getMessage(), e);
+            return null;
         }
 
         StringBuilder sb = new StringBuilder(signatureLength * 2);
