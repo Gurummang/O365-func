@@ -60,11 +60,18 @@ public class MsBoardController {
             int orgId = adminUsersRepo.findByEmail(email);;
             MsFileSizeDto msFileSizeDto = msFileService.sumOfMsFileSize(orgId,3);
             return ResponseEntity.ok(msFileSizeDto);
-        } catch (Exception e){
-            log.error("Error fetching file size");
-            log.error("Error Message : {}", e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.error("Error fetching file size: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new MsFileSizeDto(0,0,0));
+                    .body(Collections.singletonMap("message", "Error fetching file size"));
+        } catch (NullPointerException e) {
+            log.error("Error fetching file size: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("message", "Error fetching file size"));
+        } catch (Exception e) {
+            log.error("Error fetching file size: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("message", "Error fetching file size"));
         }
     }
 
@@ -209,10 +216,18 @@ public class MsBoardController {
             }
 
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("Unexpected error deleting files", e);
+        } catch (NullPointerException e) {
+            log.error("Error deleting files: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Collections.singletonMap("message", "Internal server error"));
+                    .body(Collections.singletonMap("message", "Error deleting files"));
+        } catch (IllegalArgumentException e){
+            log.error("Error deleting files: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("message", "Error deleting files"));
+        } catch (Exception e) {
+            log.error("Error deleting files: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("message", "Error deleting files"));
         }
     }
 

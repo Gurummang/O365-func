@@ -34,8 +34,15 @@ public class JwtDecoder {
             String decodedPayload = decodeJwtPayload(jwt);
             // JSON 문자열을 Map으로 변환
             return objectMapper.readValue(decodedPayload, Map.class);
+        } catch (NullPointerException e) {
+            log.error("Error parsing JWT payload: {}", e.getMessage());
+            throw new IllegalArgumentException("Invalid JWT payload");
+        } catch (IllegalArgumentException e) {
+            log.error("Error parsing JWT payload: {}", e.getMessage());
+            throw new IllegalArgumentException("Invalid JWT payload");
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse JWT payload", e);
+            log.error("Error parsing JWT payload: {}", e.getMessage());
+            throw new IllegalArgumentException("Invalid JWT payload");
         }
     }
 
