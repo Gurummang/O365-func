@@ -59,7 +59,7 @@ public class MsInitController {
             response.put("status", "success");
             response.put("message", "File lists saved successfully");
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Error fetching file lists", e);
             response.put("status", "error");
             response.put("message", "Error fetching file lists" + e.getMessage());
@@ -76,7 +76,7 @@ public class MsInitController {
             response.put("status", "success");
             response.put("message", "Webhook test success");
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Error testing webhook", e);
             response.put("status", "error");
             response.put("message", "Error testing webhook" + e.getMessage());
