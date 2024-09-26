@@ -480,7 +480,11 @@ public class TlshCreator {
 		if (checksumLength == 1) {
 			return new Tlsh(version, new int[] {checksum}, lvalue, q1ratio, q2ratio, tmp_code);
 		} else {
-			return new Tlsh(version, checksumArray.clone(), lvalue, q1ratio, q2ratio, tmp_code);
+			if (this.checksumArray!=null){
+				return new Tlsh(version, checksumArray.clone(), lvalue, q1ratio, q2ratio, tmp_code);
+			} else {
+				throw new IllegalStateException("TLSH checksumArray is null, cannot generate hash");
+			}
 		}
 	}
 
