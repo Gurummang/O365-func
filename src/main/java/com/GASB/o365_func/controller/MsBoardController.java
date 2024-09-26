@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 @RestController
 @Slf4j
@@ -143,7 +144,7 @@ public class MsBoardController {
             CompletableFuture<List<TopUserDTO>> future = msUserService.getTopUsersAsync(orgId, saasObjcet.getId().intValue());
             List<TopUserDTO> topuser = future.get();
             return ResponseEntity.ok(topuser);
-        } catch (Exception e) {
+        } catch (InterruptedException | ExecutionException e) {
             log.error("Error fetching user ranking");
             log.error("error_message : {}",e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

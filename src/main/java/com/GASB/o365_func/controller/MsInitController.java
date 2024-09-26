@@ -40,7 +40,7 @@ public class MsInitController {
             response.put("status", "success");
             response.put("message", "User saved successfully");
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Error fetching users", e);
             response.put("status", "error");
             response.put("message", "Error fetching users" + e.getMessage());
@@ -59,7 +59,7 @@ public class MsInitController {
             response.put("status", "success");
             response.put("message", "File lists saved successfully");
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Error fetching file lists", e);
             response.put("status", "error");
             response.put("message", "Error fetching file lists" + e.getMessage());
@@ -95,7 +95,7 @@ public class MsInitController {
             response.put("status", "success");
             response.put("message", "Data saved successfully");
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Error fetching data", e);
             response.put("status", "error");
             response.put("message", "Error fetching data" + e.getMessage());
