@@ -7,6 +7,7 @@ import com.GASB.o365_func.repository.ActivitiesRepo;
 import com.GASB.o365_func.repository.MonitoredUsersRepo;
 import com.GASB.o365_func.repository.MsDeltaLinkRepo;
 import com.GASB.o365_func.repository.WorkSpaceConfigRepo;
+import com.GASB.o365_func.service.util.AESUtil;
 import com.GASB.o365_func.service.util.JwtDecoder;
 import com.microsoft.graph.core.ClientException;
 import com.microsoft.graph.http.GraphServiceException;
@@ -34,6 +35,9 @@ public class MsApiService {
 
     @Value("{jwt.secret}")
     private String JWT_SECRET;
+
+    @Value("${aes.key}")
+    private String aesKey;
 
     private final MonitoredUsersRepo monitoredUsersRepo;
     private final SimpleAuthProvider simpleAuthProvider;
@@ -73,8 +77,13 @@ public class MsApiService {
 
     public GraphServiceClient<?> createGraphClient(int workspace_id){
         if (graphClient == null) {
-            String token = workspaceConfigRepo.findTokenById(workspace_id).orElse(null);
-            log.info("Token: {}",token);
+            // DB에 저장된 token
+            String encryptedToken = workspaceConfigRepo.findTokenById(workspace_id).orElse(null);
+            log.info("Encrypted token: " + encryptedToken);
+            // 복호화된 토큰
+            String token = AESUtil.decrypt(encryptedToken,aesKey);
+            log.info("Decrypted token: {}",token);
+
             if (token == null || !tokenValidation(token)) {
                 log.error("Invalid or expired token for workspace {}", workspace_id);
                 return null;
