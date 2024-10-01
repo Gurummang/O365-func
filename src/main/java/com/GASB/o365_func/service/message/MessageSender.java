@@ -34,9 +34,4 @@ public class MessageSender {
         groupingRabbitTemplate.convertAndSend(message);
         log.info("Sent message to grouping queue: " + message);
     }
-
-    public void sendMessageToQueue(Long message, String queueName) {
-        rabbitTemplate.convertAndSend(queueName, message);
-        log.info("Sent message to queue " + queueName + ": " + message);
-    }
 }

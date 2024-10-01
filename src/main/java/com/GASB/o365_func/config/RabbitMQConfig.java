@@ -5,8 +5,11 @@ import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -16,10 +19,25 @@ public class RabbitMQConfig {
 
     private final RabbitMQProperties properties;
 
+
     public RabbitMQConfig(RabbitMQProperties properties) {
         this.properties = properties;
     }
 
+
+    //역직렬화 설정
+    @Bean
+    public MessageConverter jsonMessageConverter() {
+        return new Jackson2JsonMessageConverter();
+    }
+    @Bean
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(ConnectionFactory connectionFactory,
+                                                                               MessageConverter messageConverter) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setMessageConverter(messageConverter);
+        return factory;
+    }
     // 큐 설정
     @Bean
     public Queue fileQueue() {
@@ -50,6 +68,12 @@ public class RabbitMQConfig {
     public Queue O365InitQueue() {
         return new Queue(properties.getO365InitQueue(), true, false, false);
     }
+
+    @Bean
+    public Queue O365DeleteQueue() {
+        return new Queue(properties.getO365DeleteQueue(), true, false, false);
+    }
+
     // 교환기 설정
     @Bean
     public DirectExchange exchange() {
@@ -85,6 +109,11 @@ public class RabbitMQConfig {
     @Bean
     public Binding O365InitBinding(Queue O365InitQueue, DirectExchange exchange) {
         return BindingBuilder.bind(O365InitQueue).to(exchange).with(properties.getO365RoutingKey());
+    }
+
+    @Bean
+    public Binding O365DeleteBinding(Queue O365DeleteQueue, DirectExchange exchange) {
+        return BindingBuilder.bind(O365DeleteQueue).to(exchange).with(properties.getO365DeleteRoutingKey());
     }
 
     // RabbitTemplate 설정

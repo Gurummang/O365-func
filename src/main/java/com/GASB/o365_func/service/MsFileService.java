@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
@@ -124,26 +125,48 @@ public class MsFileService {
                 .build();
     }
 
-    public boolean fileDelete(int idx, String file_name, String path) {
+    public void fileDelete(List<Map<String, String>> requests) {
         try {
-            // 파일 ID와 해시값을 통해 파일 조회
-            if (!checkFile(idx, file_name, path)) {
-                return false;
+            // 요청된 파일 목록을 반복하여 처리
+            log.info("File delete requests: {}", requests);
+            for (Map<String, String> request : requests) {
+                int fileUploadTableIdx = Integer.parseInt(request.get("id")); // 파일 ID
+                String file_name = request.get("file_name"); // 파일 이름
+                log.info("File delete request: id={}, file_name={}", fileUploadTableIdx, file_name);
+                // 파일 체크
+                if (!checkFile(fileUploadTableIdx, file_name)) {
+                    log.error("File check failed for id={}, file_name={}", fileUploadTableIdx, file_name);
+                    return; // 체크 실패 시 false 반환
+                }
+                // 파일 업로드 테이블에서 파일 정보를 조회
+                FileUploadTable targetFile = fileUploadTableRepo.findById(fileUploadTableIdx).orElse(null);
+                // Null 체크 추가
+                if (targetFile == null) {
+                    log.error("File not found with id: {}", fileUploadTableIdx);
+                    return; // 파일이 존재하지 않는 경우 false 반환
+                }
+                // MS API를 통해 파일 삭제 요청
+                msApiService.MsFileDeleteApi(targetFile.getOrgSaaS().getId(), targetFile.getSaasFileId());
             }
-            FileUploadTable targetFile = fileUploadTableRepo.findById(idx).orElse(null);
-            // Slack API를 통해 파일 삭제 요청
-            return msApiService.MsFileDeleteApi(Objects.requireNonNull(targetFile).getOrgSaaS().getId(), targetFile.getSaasFileId());
-
-        } catch (Exception e) {
-            log.error("Error processing file delete: id={}, name={}", idx, file_name, e);
-            return false;
+        } catch (RuntimeException e) {
+            // 예외 발생 시 로깅
+            log.error("Error processing file delete for requests: {}", requests, e);
         }
     }
 
-    private boolean checkFile(int idx, String file_name, String path){
+
+    private boolean checkFile(int idx, String file_name){
 
         FileUploadTable targetFile = fileUploadTableRepo.findById(idx).orElse(null);
+        if (targetFile == null) {
+            log.error("File not found in Database with id: {}", idx);
+            return false;
+        }
         Activities targetFileActivity = activitiesRepo.findBySaasFileId(Objects.requireNonNull(targetFile).getSaasFileId()).orElse(null);
+        if (targetFileActivity == null) {
+            log.error("File not found in Activities with id: {}", idx);
+            return false;
+        }
         String tmp_file_name = Objects.requireNonNull(targetFileActivity).getFileName();
         if (!tmp_file_name.equals(file_name)) {
             log.error("File name not matched: id={}, name={}", idx, file_name);

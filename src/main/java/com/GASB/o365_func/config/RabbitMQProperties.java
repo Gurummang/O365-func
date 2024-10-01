@@ -25,4 +25,6 @@ public class RabbitMQProperties {
     private String googledriveRoutingKey;
     private String o365InitQueue;
     private String o365RoutingKey;
+    private String o365DeleteRoutingKey;
+    private String o365DeleteQueue;
 }
