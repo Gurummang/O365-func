@@ -19,7 +19,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -30,7 +35,6 @@ import java.util.concurrent.CompletableFuture;
 public class MsApiService {
 
     // 흠 굳이 토큰값을 저장할 필요없이 주입받는게 나으려나?
-    private String accessToken;
     private static final String SCOPES = "https://graph.microsoft.com/.default";
 
     @Value("{jwt.secret}")
@@ -55,23 +59,6 @@ public class MsApiService {
         this.workspaceConfigRepo = workspaceConfigRepo;
         this.msDeltaLinkRepo = msDeltaLinkRepo;
         this.activitiesRepo = activitiesRepo;
-//        // ClientSecretCredential을 사용하여 자격 증명 생성
-//        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
-//                .clientId(clientId)
-//                .clientSecret(clientSecret)
-//                .tenantId(tenantId)
-//                .build();
-//
-//        TokenCredentialAuthProvider tokenCredentialAuthProvider = new TokenCredentialAuthProvider(Collections.singletonList(SCOPES), clientSecretCredential);
-//        TokenRequestContext requestContext = new TokenRequestContext().addScopes(SCOPES);
-//
-//        accessToken = Objects.requireNonNull(clientSecretCredential.getToken(requestContext).block()).getToken();
-//        log.info("Access token: {}", accessToken);
-//        this.graphClient = GraphServiceClient
-//                .builder()
-//                .authenticationProvider(tokenCredentialAuthProvider)
-//                .buildClient();
-
     }
 
 
