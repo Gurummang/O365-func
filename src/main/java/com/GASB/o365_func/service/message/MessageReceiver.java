@@ -40,7 +40,7 @@ public class MessageReceiver {
     }
 
 
-    @RabbitListener(queues = "{rabbitmq.O365_DELETE_QUEUE}")
+    @RabbitListener(queues = "${rabbitmq.O365_DELETE_QUEUE}")
     public void receiveDeleteMessage(List<Map<String,String>> message){
         try {
             log.info("Received message from queue: " + message);

@@ -36,24 +36,24 @@ public class WorkspaceConfig {
     @Column(name = "register_date", nullable = false)
     private Timestamp registerDate;
 
+    @Column(name = "refresh_token")
+    private String refreshToken;
+
     @OneToOne
     @MapsId
     @JoinColumn(name = "id")
     private OrgSaaS orgSaas;
 
     @Builder
-    public WorkspaceConfig(String workspaceName, String saasAdminEmail, String token, String webhook, String alias, Timestamp registerDate, OrgSaaS orgSaas) {
+    public WorkspaceConfig(int id, String workspaceName, String saasAdminEmail, String token, String webhook, String alias, Timestamp registerDate, String refreshToken, OrgSaaS orgSaas) {
+        this.id = id;
         this.workspaceName = workspaceName;
         this.saasAdminEmail = saasAdminEmail;
         this.token = token;
         this.webhook = webhook;
         this.alias = alias;
         this.registerDate = registerDate;
+        this.refreshToken = refreshToken;
         this.orgSaas = orgSaas;
-    }
-
-    // 복사본을 반환하도록 수정
-    public Timestamp getRegisterDate() {
-        return (Timestamp) registerDate.clone();
     }
 }

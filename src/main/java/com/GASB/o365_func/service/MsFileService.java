@@ -128,13 +128,14 @@ public class MsFileService {
     public void fileDelete(List<Map<String, String>> requests) {
         try {
             // 요청된 파일 목록을 반복하여 처리
+            log.info("File delete requests: {}", requests);
             for (Map<String, String> request : requests) {
                 int fileUploadTableIdx = Integer.parseInt(request.get("id")); // 파일 ID
                 String file_name = request.get("file_name"); // 파일 이름
-                String path = request.get("path"); // 파일 경로
-
+                log.info("File delete request: id={}, file_name={}", fileUploadTableIdx, file_name);
                 // 파일 체크
-                if (!checkFile(fileUploadTableIdx, file_name, path)) {
+                if (!checkFile(fileUploadTableIdx, file_name)) {
+                    log.error("File check failed for id={}, file_name={}", fileUploadTableIdx, file_name);
                     return; // 체크 실패 시 false 반환
                 }
                 // 파일 업로드 테이블에서 파일 정보를 조회
@@ -154,10 +155,18 @@ public class MsFileService {
     }
 
 
-    private boolean checkFile(int idx, String file_name, String path){
+    private boolean checkFile(int idx, String file_name){
 
         FileUploadTable targetFile = fileUploadTableRepo.findById(idx).orElse(null);
+        if (targetFile == null) {
+            log.error("File not found in Database with id: {}", idx);
+            return false;
+        }
         Activities targetFileActivity = activitiesRepo.findBySaasFileId(Objects.requireNonNull(targetFile).getSaasFileId()).orElse(null);
+        if (targetFileActivity == null) {
+            log.error("File not found in Activities with id: {}", idx);
+            return false;
+        }
         String tmp_file_name = Objects.requireNonNull(targetFileActivity).getFileName();
         if (!tmp_file_name.equals(file_name)) {
             log.error("File name not matched: id={}, name={}", idx, file_name);
