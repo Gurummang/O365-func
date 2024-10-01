@@ -25,7 +25,7 @@ public class MessageReceiver {
     @RabbitListener(queues = "${rabbitmq.O365_INIT_QUEUE}")
     public void receiveMessage(int message) {
         try {
-            log.info("Received message from queue: " + message);
+            log.info("Received message from init queue: " + message);
             msInitService.fetchAndSaveAll(message); // 이 메소드가 발생할 수 있는 구체적인 예외들을 처리
         } catch (IllegalArgumentException e) {
             // 메시지가 올바르지 않은 형식일 때
@@ -43,7 +43,7 @@ public class MessageReceiver {
     @RabbitListener(queues = "${rabbitmq.O365_DELETE_QUEUE}")
     public void receiveDeleteMessage(List<Map<String,String>> message){
         try {
-            log.info("Received message from queue: " + message);
+            log.info("Received message from delete queue: " + message);
             msFileService.fileDelete(message);
         } catch (DataAccessException e) {
             log.error("Error deleting data: {}", e.getMessage(), e);
