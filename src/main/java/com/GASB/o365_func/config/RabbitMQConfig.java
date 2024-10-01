@@ -10,6 +10,7 @@ import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -50,11 +51,6 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Queue gdInitQueue() {
-        return new Queue(properties.getGoogleInitQueue(), true, false, false);
-    }
-
-    @Bean
     public Queue vtUploadQueue() {
         return new Queue(properties.getVtUploadQueue(), true, false, false);
     }
@@ -82,37 +78,32 @@ public class RabbitMQConfig {
 
     // 바인딩 설정
     @Bean
-    public Binding fileBinding(Queue fileQueue, DirectExchange exchange) {
+    public Binding fileBinding(@Qualifier("fileQueue")Queue fileQueue, DirectExchange exchange) {
         return BindingBuilder.bind(fileQueue).to(exchange).with(properties.getFileRoutingKey());
     }
 
     @Bean
-    public Binding vtReportBinding(Queue vtReportQueue, DirectExchange exchange) {
+    public Binding vtReportBinding(@Qualifier("vtReportQueue")Queue vtReportQueue, DirectExchange exchange) {
         return BindingBuilder.bind(vtReportQueue).to(exchange).with(properties.getVtReportRoutingKey());
     }
 
     @Bean
-    public Binding gdInitBinding(Queue gdInitQueue, DirectExchange exchange) {
-        return BindingBuilder.bind(gdInitQueue).to(exchange).with(properties.getGoogledriveRoutingKey());
-    }
-
-    @Bean
-    public Binding vtUploadBinding(Queue vtUploadQueue, DirectExchange exchange) {
+    public Binding vtUploadBinding(@Qualifier("vtUploadQueue")Queue vtUploadQueue, DirectExchange exchange) {
         return BindingBuilder.bind(vtUploadQueue).to(exchange).with(properties.getVtUploadRoutingKey());
     }
 
     @Bean
-    public Binding groupingBinding(Queue groupingQueue, DirectExchange exchange) {
+    public Binding groupingBinding(@Qualifier("groupingQueue")Queue groupingQueue, DirectExchange exchange) {
         return BindingBuilder.bind(groupingQueue).to(exchange).with(properties.getGroupingRoutingKey());
     }
 
     @Bean
-    public Binding O365InitBinding(Queue O365InitQueue, DirectExchange exchange) {
+    public Binding O365InitBinding(@Qualifier("O365InitQueue")Queue O365InitQueue, DirectExchange exchange) {
         return BindingBuilder.bind(O365InitQueue).to(exchange).with(properties.getO365RoutingKey());
     }
 
     @Bean
-    public Binding O365DeleteBinding(Queue O365DeleteQueue, DirectExchange exchange) {
+    public Binding O365DeleteBinding(@Qualifier("O365DeleteQueue")Queue O365DeleteQueue, DirectExchange exchange) {
         return BindingBuilder.bind(O365DeleteQueue).to(exchange).with(properties.getO365DeleteRoutingKey());
     }
 
