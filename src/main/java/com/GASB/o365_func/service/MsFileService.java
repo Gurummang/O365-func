@@ -47,7 +47,7 @@ public class MsFileService {
             log.info("workspaceId : {}", workspaceId);
             try {
                 GraphServiceClient graphClient = msApiService.createGraphClient(workspaceId);
-                List<DriveItemCollectionPage> itemPages = msApiService.fetchFileLists(graphClient);
+                List<DriveItemCollectionPage> itemPages = msApiService.fetchFileLists(graphClient, workspaceId);
                 List<DriveItemCollectionPage> siteItems = msApiService.fetchFileListsInSite(graphClient, msApiService.fetchSiteLists(graphClient));
                 OrgSaaS orgSaaSObject = orgSaaSRepo.findById(workspaceId).orElse(null);
 
