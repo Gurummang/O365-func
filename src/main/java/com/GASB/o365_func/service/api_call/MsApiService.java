@@ -66,10 +66,8 @@ public class MsApiService {
         if (graphClient == null) {
             // DB에 저장된 token
             String encryptedToken = workspaceConfigRepo.findTokenById(workspace_id).orElse(null);
-            log.info("Encrypted token: " + encryptedToken);
             // 복호화된 토큰
             String token = AESUtil.decrypt(encryptedToken,aesKey);
-            log.info("Decrypted token: {}",token);
 
             if (token == null || !tokenValidation(token)) {
                 log.error("Invalid or expired token for workspace {}", workspace_id);
