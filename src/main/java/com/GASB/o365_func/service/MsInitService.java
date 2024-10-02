@@ -45,26 +45,24 @@ public class MsInitService {
         });
     }
     public void fetchAndSaveAll(int message) {
-        CompletableFuture<Void> usersFuture = fetchAndSaveUsers(message);
-        CompletableFuture<Void> filesFuture = fetchAndSaveFiles(message);
-
         try {
-            // filesFuture가 완료되면 setWebhook 호출
-            filesFuture
+            // usersFuture 완료 후 filesFuture 수행
+            CompletableFuture<Void> usersFuture = fetchAndSaveUsers(message)
+                    .thenCompose(v -> fetchAndSaveFiles(message)) // usersFuture가 완료되면 filesFuture 호출
                     .thenCompose(v -> setWebhook(message))  // filesFuture 완료 후 웹훅 설정
                     .thenRun(() -> log.info("Webhook set successfully"))  // 웹훅 설정 후 실행
-                    .thenCombine(usersFuture, (f, u) -> {  // usersFuture와 filesFuture가 모두 완료되면 실행
-                        log.info("All data fetched and saved successfully");
-                        return null;
-                    })
+                    .thenRun(() -> log.info("All data fetched and saved successfully"))  // 모든 작업 완료 후 실행
                     .exceptionally(e -> {
                         log.error("Error fetching files, users, or setting webhook: {}", e.getMessage(), e);
                         return null;
-                    })
-                    .join(); // 비동기 작업을 동기적으로 완료되도록 기다림
+                    });
+
+            // 비동기 작업을 동기적으로 완료되도록 기다림
+            usersFuture.join();
         } catch (Exception e) {
             log.error("Error fetching files, users, or setting webhook: {}", e.getMessage(), e);
         }
     }
+
 
 }
