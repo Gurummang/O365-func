@@ -3,6 +3,7 @@ package com.GASB.o365_func.service.util;
 import com.GASB.o365_func.repository.MonitoredUsersRepo;
 import com.GASB.o365_func.repository.WorkSpaceConfigRepo;
 import com.GASB.o365_func.service.api_call.MsApiService;
+import com.microsoft.graph.http.GraphFatalServiceException;
 import com.microsoft.graph.models.Request;
 import com.microsoft.graph.models.Subscription;
 import com.microsoft.graph.requests.GraphServiceClient;
@@ -35,11 +36,18 @@ public class WebhookUtil {
     public CompletableFuture<Void> createSubscriptionAsync(GraphServiceClient<?> graphClient, String userId, int workspaceId) {
         return CompletableFuture.runAsync(() -> {
             try {
+                // Notification URL 체크
+                String notificationUrl = workSpaceConfigRepo.findWebhookUrlById(workspaceId).orElse(null);
+                if (notificationUrl == null) {
+                    log.error("Failed to create subscription for user {}: Notification URL is null", userId);
+                    throw new IllegalArgumentException("Notification URL cannot be null");
+                }
+
                 Subscription subscription = new Subscription();
                 subscription.changeType = "updated";
-                subscription.notificationUrl = workSpaceConfigRepo.findWebhookUrlById(workspaceId).orElse(null);
+                subscription.notificationUrl = notificationUrl;
                 subscription.resource = "/users/" + userId + "/drive/root";
-                subscription.expirationDateTime = OffsetDateTime.now().plusMinutes(4230);  // 최대 구독 만료 시간 설정
+                subscription.expirationDateTime = OffsetDateTime.now().plusMinutes(1440);  // 최대 구독 만료 시간 설정
                 subscription.clientState = generateClientState();
 
                 Subscription createdSubscription = graphClient.subscriptions()
@@ -47,12 +55,17 @@ public class WebhookUtil {
                         .post(subscription);
 
                 log.info("Created subscription for user {}: {}", userId, createdSubscription.id);
+                log.info("Created subscription details: {}", createdSubscription);
 
+            } catch (GraphFatalServiceException e) {
+                log.error("GraphFatalServiceException :: Failed to create subscription for user {}: {} - Response code: {}",
+                        userId, e.getMessage(), e.getResponseCode(), e);
             } catch (Exception e) {
-                log.error("Failed to create subscription for user {}: {}", userId, e.getMessage());
+                log.error("Exception :: Failed to create subscription for user {}: {} - Stack trace: ", userId, e.getMessage(), e);
             }
         });
     }
+
 
     public void createSubscriptionsForAllUsers(int id) {
         List<String> userIds = monitoredUsersRepo.getMonitoredUserList(id);
