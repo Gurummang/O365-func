@@ -72,7 +72,7 @@ public interface MonitoredUsersRepo extends JpaRepository<MonitoredUsers, Long> 
     @Query("SELECT EXISTS(SELECT 1 FROM MonitoredUsers u WHERE u.userId = :userId AND u.orgSaaS.id = :orgSaaSId)")
     boolean existsByUserIdAndOrgSaaS_Id(@Param("userId") String userId, @Param("orgSaaSId") int workspaceId);
 
-    @Query("SELECT u.userId FROM MonitoredUsers u JOIN OrgSaaS os ON u.orgSaaS.id = os.id WHERE os.saas.id = 3")
-    List<String> getUserList();
+    @Query("SELECT u.userId FROM MonitoredUsers u JOIN OrgSaaS os ON u.orgSaaS.id = os.id WHERE os.saas.id = 3 AND u.orgSaaS.id = :orgSaaSId")
+    List<String> getUserList(@Param("org_saas_id") int org_saas_id );
 
 }

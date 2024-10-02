@@ -90,34 +90,53 @@ public class MsApiService {
     }
 
     // List files
-    public List<DriveItemCollectionPage> fetchFileLists(GraphServiceClient graphClient) {
-        List<String> userList = monitoredUsersRepo.getUserList();
+    public List<DriveItemCollectionPage> fetchFileLists(GraphServiceClient graphClient, int workspace_id) {
+        // Null 체크 추가
+        if (graphClient == null) {
+            log.error("GraphServiceClient is null");
+            return Collections.emptyList();
+        }
+
+        List<String> userList = monitoredUsersRepo.getUserList(workspace_id);
+        if (userList == null || userList.isEmpty()) {
+            log.error("No users found for workspace_id: {}", workspace_id);
+            return Collections.emptyList();
+        }
+
         List<DriveItemCollectionPage> responses = new ArrayList<>();
+
         for (String user_id : userList) {
             log.info("Fetching files for user_id: {}", user_id);
+
             try {
                 DriveItemCollectionPage driveItems = graphClient.users(user_id)
                         .drive()
                         .root()
                         .children()
                         .buildRequest()
-//                        .select("createdBy,createdDateTime, id, @microsoft.graph.downloadUrl,name,size,item.parentReference")
+                        // .select("createdBy,createdDateTime, id, @microsoft.graph.downloadUrl,name,size,parentReference")
                         .get();
-                responses.add(driveItems);
+
+                if (driveItems == null) {
+                    log.warn("No files found for user_id: {}", user_id);
+                } else {
+                    responses.add(driveItems);
+                }
+
             } catch (GraphServiceException e) {
                 if (e.getResponseCode() == 404) {
                     log.error("Drive not found for user_id: {}", user_id);
                 } else {
                     log.error("An error occurred while fetching files for user_id: {}", user_id, e);
                 }
-                continue;
             } catch (Exception e) {
                 log.error("Unexpected error occurred for user_id: {}", user_id, e);
-                continue;
             }
         }
+
         return responses;
     }
+
 
     public DriveItem getEachFileInto(String userId, String fileId, GraphServiceClient graphClient) {
         try {
