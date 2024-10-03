@@ -113,18 +113,35 @@ public class MsFileEvent {
             String file_id = item.id;
             // 현재시각
             long timestamp = Instant.now().getEpochSecond();
+            log.info("Handling file delete event for file_id: {}", file_id);
 
             Activities activities = copyForDelete(file_id, timestamp);
+
             String file_hash = fileUploadRepository.findFileHashByFileId(file_id).orElse(null);
+
+            if (file_hash == null){
+                log.warn("No file hash found for file_id: {}", file_id);
+                throw new IllegalStateException("No file hash found for file: " + file_id);
+            }
             String s3Path = storedFileRepo.findSavePathByHash(file_hash).orElse(null);
+
+            if (activities == null){
+                log.warn("No recent activities found for file_id: {}", file_id);
+                throw new IllegalStateException("No recent activity found for file: " + file_id);
+            }
+
             fileActivityRepo.save(activities);
 
+            if (s3Path == null){
+                log.warn("No s3 path found for file_id: {}", file_id);
+                throw new IllegalStateException("No s3 path found for file: " + file_id);
+            }
             fileDownloadUtil.deleteFileInS3(s3Path);
             // 2. file_upload 테이블에서 deleted 컬럼을 true로 변경
             fileUploadRepository.checkDelete(file_id);
             messageSender.sendGroupingMessage(activities.getId());
         } catch (Exception e) {
-            log.error("Error processing file delete event", e);
+            log.error("Error processing file delete event : {}", e.getMessage(),e);
         }
     }
 
@@ -132,7 +149,7 @@ public class MsFileEvent {
         // 최근 활동 정보를 찾음, 없으면 null
         Activities activities = fileActivityRepo.findRecentBySaasFileId(file_id).orElse(null);
         // file_upload테이블에서 delete가 이미 1 처리 되어있으면 null 혹은 activities테이블에서 해당 saas_file_id의 file_delete 이벤트가 있을경우 null
-        if (fileUploadTableRepo.checkAlreadyDelete(file_id) == 1 || fileActivityRepo.existsAlreadyDeleteFileBySaasFileId(file_id)){
+        if (fileUploadTableRepo.checkAlreadyDelete(file_id) ==1){
             log.warn("File already deleted: {}", file_id);
             throw new IllegalStateException("File already deleted: " + file_id);
         }
