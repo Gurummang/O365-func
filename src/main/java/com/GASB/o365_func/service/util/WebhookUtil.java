@@ -54,6 +54,9 @@ public class WebhookUtil {
                         .buildRequest()
                         .post(subscription);
 
+                msApiService.initDeltaLink(userId,graphClient);
+                log.info("init delta link for user {}", userId);
+
                 log.info("Created subscription for user {}: {}", userId, createdSubscription.id);
                 log.info("Created subscription details: {}", createdSubscription);
 
