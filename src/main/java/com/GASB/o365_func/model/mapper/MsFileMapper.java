@@ -44,6 +44,7 @@ public class MsFileMapper {
 
         OffsetDateTime utcTime = item.createdDateTime;
         log.info("utcTime : {}", utcTime);
+        LocalDateTime utcTimeToLocal = Objects.requireNonNull(utcTime).atZoneSameInstant(zoneId).toLocalDateTime();
         LocalDateTime kstTime = Objects.requireNonNull(utcTime).atZoneSameInstant(zoneId).toLocalDateTime();
         log.info("kstTime : {}", kstTime);
         return MsFileInfoDto.builder()
@@ -63,7 +64,7 @@ public class MsFileMapper {
                         .map(createdBy -> createdBy.user)
                         .map(user -> user.displayName)
                         .orElse(null)) // 파일 소유자 이름 null 체크
-                .file_created_time(kstTime) // 파일 생성 시간 null 체크
+                .file_created_time(utcTimeToLocal) // 파일 생성 시간 null 체크
                 .file_path(Optional.ofNullable(item.parentReference)
                         .map(reference -> reference.path)
                         .orElse(null)) // 경로 null 체크
@@ -81,6 +82,7 @@ public class MsFileMapper {
                 .map(file -> file.mimeType)
                 .orElse("text/plain");
         OffsetDateTime utcTime = item.lastModifiedDateTime;
+        LocalDateTime utcTimeToLocal = Objects.requireNonNull(utcTime).atZoneSameInstant(zoneId).toLocalDateTime();
         LocalDateTime kstTime = Objects.requireNonNull(utcTime).atZoneSameInstant(zoneId).toLocalDateTime();
         log.info("KST Time : {} ", kstTime);
         return MsFileInfoDto.builder()
@@ -100,7 +102,7 @@ public class MsFileMapper {
                         .map(createdBy -> createdBy.user)
                         .map(user -> user.displayName)
                         .orElse(null)) // 파일 소유자 이름 null 체크
-                .file_created_time(kstTime)// 마지막 수정 시간을 서울 시간대로 변환하여 설정
+                .file_created_time(utcTimeToLocal)// 마지막 수정 시간을 서울 시간대로 변환하여 설정
                 .file_path(Optional.ofNullable(item.parentReference)
                         .map(reference -> reference.path)
                         .orElse(null)) // 경로 null 체크
@@ -116,6 +118,7 @@ public class MsFileMapper {
                 .map(file -> file.mimeType)
                 .orElse("text/plain");
         OffsetDateTime utcTime = item.createdDateTime;
+        LocalDateTime utcTimeToLocal = Objects.requireNonNull(utcTime).atZoneSameInstant(zoneId).toLocalDateTime();
         LocalDateTime kstTime = Objects.requireNonNull(utcTime).atZoneSameInstant(zoneId).toLocalDateTime();
 
 
@@ -136,7 +139,7 @@ public class MsFileMapper {
                         .map(createdBy -> createdBy.user)
                         .map(user -> user.displayName)
                         .orElse(null)) // 파일 소유자 이름 null 체크
-                .file_created_time(kstTime)
+                .file_created_time(utcTimeToLocal)
                 .file_path(Optional.ofNullable(item.parentReference)
                         .map(reference -> reference.path)
                         .orElse(null)) // 경로 null 체크
@@ -169,6 +172,7 @@ public class MsFileMapper {
         if (file == null) {
             return null;
         }
+        log.info("file.getFile_created_time() : {}", file.getFile_created_time());
         return FileUploadTable.builder()
                 .orgSaaS(orgSaas)
                 .saasFileId(file.getFile_id())

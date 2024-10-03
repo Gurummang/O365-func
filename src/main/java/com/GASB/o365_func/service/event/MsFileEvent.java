@@ -1,6 +1,6 @@
 package com.GASB.o365_func.service.event;
 
-import com.GASB.o365_func.model.dto.MsFileInfoDto;
+
 import com.GASB.o365_func.model.entity.Activities;
 import com.GASB.o365_func.model.entity.OrgSaaS;
 import com.GASB.o365_func.model.mapper.MsFileMapper;
@@ -9,18 +9,15 @@ import com.GASB.o365_func.service.api_call.MsApiService;
 import com.GASB.o365_func.service.message.MessageSender;
 import com.GASB.o365_func.service.util.FileDownloadUtil;
 import com.microsoft.graph.models.DriveItem;
-import com.microsoft.graph.requests.DriveItemDeltaCollectionPage;
 import com.microsoft.graph.requests.GraphServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -38,7 +35,7 @@ public class MsFileEvent {
     private final MessageSender messageSender;
     private final StoredFileRepo storedFileRepo;
     private final FileDownloadUtil fileDownloadUtil;
-    private final MsDeltaLinkRepo msDeltaLinkRepo;
+    private final FileUploadTableRepo fileUploadTableRepo;
 
     public void handleFileEvent(Map<String, Object> payload, String event_type) {
         log.info("Handling file event with payload: {}", payload);
@@ -134,6 +131,11 @@ public class MsFileEvent {
     private Activities copyForDelete(String file_id, long timestamp){
         // 최근 활동 정보를 찾음, 없으면 null
         Activities activities = fileActivityRepo.findRecentBySaasFileId(file_id).orElse(null);
+        // file_upload테이블에서 delete가 이미 1 처리 되어있으면 null 혹은 activities테이블에서 해당 saas_file_id의 file_delete 이벤트가 있을경우 null
+        if (fileUploadTableRepo.checkAlreadyDelete(file_id) == 1 || fileActivityRepo.existsAlreadyDeleteFileBySaasFileId(file_id)){
+            log.warn("File already deleted: {}", file_id);
+            throw new IllegalStateException("File already deleted: " + file_id);
+        }
 
         // activities가 null일 경우 예외 처리 또는 기본값 처리
         if (activities == null) {
