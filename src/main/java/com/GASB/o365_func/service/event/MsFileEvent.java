@@ -10,6 +10,7 @@ import com.GASB.o365_func.service.message.MessageSender;
 import com.GASB.o365_func.service.util.FileDownloadUtil;
 import com.microsoft.graph.models.DriveItem;
 import com.microsoft.graph.requests.GraphServiceClient;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -111,9 +112,10 @@ public class MsFileEvent {
         try {
             // 1. activities 테이블에 deleted 이벤트로 추가
             String file_id = item.id;
+            log.info("Handling file delete event for file_id: {}", file_id);
             // 현재시각
             long timestamp = Instant.now().getEpochSecond();
-            log.info("Handling file delete event for file_id: {}", file_id);
+            log.info("timestamp : {}", timestamp);
 
             Activities activities = copyForDelete(file_id, timestamp);
 
@@ -130,6 +132,11 @@ public class MsFileEvent {
                 throw new IllegalStateException("No recent activity found for file: " + file_id);
             }
 
+            // 한번더 검사
+            if(fileActivityRepo.existsAlreadyDeleteFileBySaasFileId(file_id)){
+                log.warn("File already deleted in activity table: {}", file_id);
+                throw new IllegalStateException("File already deleted in activity table: " + file_id);
+            }
             fileActivityRepo.save(activities);
 
             if (s3Path == null){
@@ -145,15 +152,21 @@ public class MsFileEvent {
         }
     }
 
-    private Activities copyForDelete(String file_id, long timestamp){
-        // 최근 활동 정보를 찾음, 없으면 null
-        Activities activities = fileActivityRepo.findRecentBySaasFileId(file_id).orElse(null);
+    @Transactional
+    public Activities copyForDelete(String file_id, long timestamp){
         // file_upload테이블에서 delete가 이미 1 처리 되어있으면 null 혹은 activities테이블에서 해당 saas_file_id의 file_delete 이벤트가 있을경우 null
-        if (fileUploadTableRepo.checkAlreadyDelete(file_id) || fileActivityRepo.existsAlreadyDeleteFileBySaasFileId(file_id)){
+        if (Boolean.TRUE.equals(fileUploadRepository.checkAlreadyDelete(file_id))){
             log.warn("File already deleted: {}", file_id);
-            throw new IllegalStateException("File already deleted: " + file_id);
+            throw new IllegalStateException("File already deleted check: " + file_id);
         }
 
+        if (Boolean.TRUE.equals(fileActivityRepo.existsAlreadyDeleteFileBySaasFileId(file_id))){
+            log.warn("File already deleted in activity table: {}", file_id);
+            throw new IllegalStateException("File already deleted in activity table: " + file_id);
+        }
+
+        // 최근 활동 정보를 찾음, 없으면 null
+        Activities activities = fileActivityRepo.findRecentBySaasFileId(file_id).orElse(null);
         // activities가 null일 경우 예외 처리 또는 기본값 처리
         if (activities == null) {
             log.warn("No recent activities found for file_id: {}", file_id);
@@ -166,11 +179,12 @@ public class MsFileEvent {
         // timestamp가 0일 경우, 현재 시간을 사용할 수 있도록 처리
         LocalDateTime adjustedTimestamp;
         if (timestamp > 0) {
-            adjustedTimestamp = LocalDateTime.ofInstant(Instant.ofEpochSecond(timestamp), zoneId);
+            // 시스템의 디폴트 시간대로 timestamp를 LocalDateTime으로 변환
+            adjustedTimestamp = LocalDateTime.ofInstant(Instant.ofEpochSecond(timestamp), ZoneId.systemDefault());
         } else {
             adjustedTimestamp = LocalDateTime.now(zoneId);
         }
-
+        log.info("adjustedTimestamp : {}", adjustedTimestamp);
         return Activities.builder()
                 .user(activities.getUser()) // null이 아닌지 확인 후 처리
                 .eventType("file_delete")
