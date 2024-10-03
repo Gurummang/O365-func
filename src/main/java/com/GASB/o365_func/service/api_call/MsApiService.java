@@ -222,7 +222,7 @@ public class MsApiService {
      */
     public String initDeltaLink(String userId, GraphServiceClient<?> graphClient) {
         try {
-            int workspace_id = monitoredUsersRepo.getOrgSaaSId(userId);
+//            int workspace_id = monitoredUsersRepo.getOrgSaaSId(userId);
             // 최초 Delta API 호출 (OneDrive 루트 디렉터리)
             DriveItemDeltaCollectionPage deltaPage = graphClient
                     .users(userId)
@@ -258,6 +258,7 @@ public class MsApiService {
         String token = deltaLink.split("token=")[1];
         if (msDeltaLinkRepo.existsByMonitoredUsers_Id(monitoredUsers.getId())){
             msDeltaLinkRepo.updateDeltaLink(token, monitoredUsers.getId());
+            log.info("DeltaLink updated for user: {}", userId);
             return;
         }
         MsDeltaLink msDeltaLink = MsDeltaLink.builder()
@@ -326,7 +327,7 @@ public class MsApiService {
                 });
 
                 // 새롭게 deltaLink를 업데이트
-                initDeltaLink(userId, graphClient); //여기까지는 잘 되는것을 확인!
+                initDeltaLink(userId, graphClient);
                 return response;
 
             } catch (Exception e) {
