@@ -49,4 +49,8 @@ public interface FileUploadTableRepo extends JpaRepository<FileUploadTable, Long
             "WHERE fu.saasFileId = :saasFileId AND fu.id IS NOT NULL")
     void checkDelete(@Param("saasFileId") String saasFileId);
 
+
+    @Query("SELECT fu.deleted FROM FileUploadTable fu WHERE fu.saasFileId = :saasFileId")
+    int checkAlreadyDelete(@Param("saasFileId") String saasFileId);
+
 }
