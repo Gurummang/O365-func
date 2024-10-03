@@ -44,7 +44,9 @@ public class MsFileMapper {
 
         OffsetDateTime utcTime = item.createdDateTime;
         log.info("utcTime : {}", utcTime);
-        LocalDateTime utcTimeToLocal = Objects.requireNonNull(utcTime).atZoneSameInstant(zoneId).toLocalDateTime();
+        LocalDateTime utcTimeToLocal = Objects.requireNonNull(utcTime)
+                .atZoneSameInstant(ZoneId.systemDefault())
+                .toLocalDateTime();
         LocalDateTime kstTime = Objects.requireNonNull(utcTime).atZoneSameInstant(zoneId).toLocalDateTime();
         log.info("kstTime : {}", kstTime);
         return MsFileInfoDto.builder()
@@ -82,7 +84,10 @@ public class MsFileMapper {
                 .map(file -> file.mimeType)
                 .orElse("text/plain");
         OffsetDateTime utcTime = item.lastModifiedDateTime;
-        LocalDateTime utcTimeToLocal = Objects.requireNonNull(utcTime).atZoneSameInstant(zoneId).toLocalDateTime();
+        LocalDateTime utcTimeToLocal = Objects.requireNonNull(utcTime)
+                .atZoneSameInstant(ZoneId.systemDefault())
+                .toLocalDateTime();
+
         LocalDateTime kstTime = Objects.requireNonNull(utcTime).atZoneSameInstant(zoneId).toLocalDateTime();
         log.info("KST Time : {} ", kstTime);
         return MsFileInfoDto.builder()
@@ -118,7 +123,9 @@ public class MsFileMapper {
                 .map(file -> file.mimeType)
                 .orElse("text/plain");
         OffsetDateTime utcTime = item.createdDateTime;
-        LocalDateTime utcTimeToLocal = Objects.requireNonNull(utcTime).atZoneSameInstant(zoneId).toLocalDateTime();
+        LocalDateTime utcTimeToLocal = Objects.requireNonNull(utcTime)
+                .atZoneSameInstant(ZoneId.systemDefault())
+                .toLocalDateTime();
         LocalDateTime kstTime = Objects.requireNonNull(utcTime).atZoneSameInstant(zoneId).toLocalDateTime();
 
 
