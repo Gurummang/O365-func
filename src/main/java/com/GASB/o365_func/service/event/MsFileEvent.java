@@ -152,8 +152,8 @@ public class MsFileEvent {
         }
     }
 
-    @Transactional
-    public Activities copyForDelete(String file_id, long timestamp){
+
+    public synchronized Activities copyForDelete(String file_id, long timestamp){
         // file_upload테이블에서 delete가 이미 1 처리 되어있으면 null 혹은 activities테이블에서 해당 saas_file_id의 file_delete 이벤트가 있을경우 null
         if (Boolean.TRUE.equals(fileUploadRepository.checkAlreadyDelete(file_id))){
             log.warn("File already deleted: {}", file_id);
