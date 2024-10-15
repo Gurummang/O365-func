@@ -1,6 +1,5 @@
 package com.GASB.o365_func.service.api_call;
 
-import com.GASB.o365_func.model.dto.MsFileInfoDto;
 import com.GASB.o365_func.model.entity.MonitoredUsers;
 import com.GASB.o365_func.model.entity.MsDeltaLink;
 import com.GASB.o365_func.repository.ActivitiesRepo;
@@ -19,13 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
-
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
@@ -49,7 +42,7 @@ public class MsApiService {
     private final MsDeltaLinkRepo msDeltaLinkRepo;
 
     private final ActivitiesRepo activitiesRepo;
-    private GraphServiceClient<?> graphClient;
+//    private GraphServiceClient<?> graphClient;
     @Autowired
     public MsApiService(MonitoredUsersRepo monitoredUsersRepo, SimpleAuthProvider simpleAuthProvider,
                         WorkSpaceConfigRepo workspaceConfigRepo, MsDeltaLinkRepo msDeltaLinkRepo,
@@ -63,26 +56,25 @@ public class MsApiService {
 
 
     public GraphServiceClient<?> createGraphClient(int workspace_id){
-        if (graphClient == null) {
-            // DB에 저장된 token
-            String encryptedToken = workspaceConfigRepo.findTokenById(workspace_id).orElse(null);
-            log.info("Encrypted token: {}", encryptedToken);
-            // 복호화된 토큰
-            String token = AESUtil.decrypt(encryptedToken,aesKey);
-            log.info("Decrypted token: {}", token);
 
-            if (token == null || !tokenValidation(token)) {
-                log.error("Invalid or expired token for workspace {}", workspace_id);
-                return null;
-            }
-            simpleAuthProvider.setAccessToken(token);
-            graphClient = GraphServiceClient.builder().authenticationProvider(simpleAuthProvider).buildClient();
+        // DB에 저장된 token
+        String encryptedToken = workspaceConfigRepo.findTokenById(workspace_id).orElse(null);
+        log.info("Encrypted token: {}", encryptedToken);
+        // 복호화된 토큰
+        String token = AESUtil.decrypt(encryptedToken,aesKey);
+        log.info("Decrypted token: {}", token);
+
+        if (token == null || !tokenValidation(token)) {
+            log.error("Invalid or expired token for workspace {}", workspace_id);
+            return null;
         }
+        simpleAuthProvider.setAccessToken(token);
+        GraphServiceClient<?> graphClient = GraphServiceClient.builder().authenticationProvider(simpleAuthProvider).buildClient();
+
         if (!validateGraphClient(graphClient)) {
             log.error("GraphClient is invalid");
             return null;
         }
-
         return graphClient;
     }
 

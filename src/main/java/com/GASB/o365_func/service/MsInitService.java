@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 @Service
 @Slf4j
@@ -46,23 +47,26 @@ public class MsInitService {
     }
     public void fetchAndSaveAll(int message) {
         try {
-            // usersFuture 완료 후 filesFuture 수행
+            // 모든 작업을 비동기로 실행하고 완료되기를 기다림
             CompletableFuture<Void> usersFuture = fetchAndSaveUsers(message)
-                    .thenCompose(v -> fetchAndSaveFiles(message)) // usersFuture가 완료되면 filesFuture 호출
-                    .thenCompose(v -> setWebhook(message))  // filesFuture 완료 후 웹훅 설정
-                    .thenRun(() -> log.info("Webhook set successfully"))  // 웹훅 설정 후 실행
-                    .thenRun(() -> log.info("All data fetched and saved successfully"))  // 모든 작업 완료 후 실행
+                    .thenCompose(v -> fetchAndSaveFiles(message)) // 파일 저장
+                    .thenCompose(v -> setWebhook(message))  // 웹훅 설정
+                    .thenRun(() -> log.info("Webhook set successfully"))  // 웹훅 완료 로그
+                    .thenRun(() -> log.info("All data fetched and saved successfully"))  // 모든 작업 완료 로그
                     .exceptionally(e -> {
                         log.error("Error fetching files, users, or setting webhook: {}", e.getMessage(), e);
                         return null;
                     });
 
-            // 비동기 작업을 동기적으로 완료되도록 기다림
-            usersFuture.join();
+            // 모든 비동기 작업 완료를 대기
+            usersFuture.join();  // main 쓰레드를 블로킹하지 않으려면 다른 대기 방법 고려
+        } catch (CompletionException e) {
+            log.error("CompletionException: {}", e.getMessage(), e);
         } catch (Exception e) {
-            log.error("Error fetching files, users, or setting webhook: {}", e.getMessage(), e);
+            log.error("Error in fetchAndSaveAll: {}", e.getMessage(), e);
         }
     }
+
 
 
 }
