@@ -66,8 +66,10 @@ public class MsApiService {
         if (graphClient == null) {
             // DB에 저장된 token
             String encryptedToken = workspaceConfigRepo.findTokenById(workspace_id).orElse(null);
+            log.info("Encrypted token: {}", encryptedToken);
             // 복호화된 토큰
             String token = AESUtil.decrypt(encryptedToken,aesKey);
+            log.info("Decrypted token: {}", token);
 
             if (token == null || !tokenValidation(token)) {
                 log.error("Invalid or expired token for workspace {}", workspace_id);
@@ -76,7 +78,24 @@ public class MsApiService {
             simpleAuthProvider.setAccessToken(token);
             graphClient = GraphServiceClient.builder().authenticationProvider(simpleAuthProvider).buildClient();
         }
+        if (!validateGraphClient(graphClient)) {
+            log.error("GraphClient is invalid");
+            return null;
+        }
+
         return graphClient;
+    }
+
+    public boolean validateGraphClient(GraphServiceClient<?> graphClient) {
+        try {
+            // 사용자 정보를 요청하여 클라이언트 유효성 확인
+            graphClient.me().buildRequest().get();
+            return true; // 성공적으로 요청이 완료되면 클라이언트가 유효함
+        } catch (Exception e) {
+            log.error("GraphClient validation failed: {}", e.getMessage());
+            log.error("Entire error log : ", e);
+            return false; // 요청에 실패하면 클라이언트가 유효하지 않음
+        }
     }
 
 
