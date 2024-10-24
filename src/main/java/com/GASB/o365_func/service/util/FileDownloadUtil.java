@@ -22,6 +22,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
@@ -49,12 +50,12 @@ public class FileDownloadUtil {
     private final StoredFileRepo storedFileRepo;
     private final ActivitiesRepo activitiesRepo;
     private final MessageSender messageSender;
-    private final WorkSpaceConfigRepo workSpaceRepo;
     private final FileUploadTableRepo fileUploadTableRepo;
     private final S3Client s3Client;
     private final MsFileMapper msFileMapper;
     private final MonitoredUsersRepo monitoredUsersRepo;
     private final ScanUtil scanUtil;
+    private final FileEncUtil fileEncUtil;
 
 
     private static final String HASH_ALGORITHM = "SHA-256";
@@ -374,16 +375,36 @@ public class FileDownloadUtil {
 
 
     private void uploadFileToS3(String filePath, String s3Key) {
+
+        //암호화 진행
         try {
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
                     .key(s3Key)
                     .build();
-
-            s3Client.putObject(putObjectRequest, Paths.get(filePath));
+            // 암호화한 파일을 업로드
+            s3Client.putObject(putObjectRequest, fileEncUtil.encryptAndSaveFile(filePath));
             log.info("File uploaded successfully to S3: {}", s3Key);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Error uploading file to S3: {}", e.getMessage(), e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            deleteFileInLocal(filePath);
+        }
+    }
+    public void deleteFileInLocal(String filePath) {
+        try {
+            // 파일 경로를 Path 객체로 변환
+            Path path = Paths.get(filePath);
+
+            // 파일 삭제
+            Files.delete(path);
+            log.info("File deleted successfully from local filesystem: {}", filePath);
+
+        } catch (IOException e) {
+            // 파일 삭제 중 예외 처리
+            log.info("Error deleting file from local filesystem: {}" , e.getMessage());
         }
     }
 
