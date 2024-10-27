@@ -42,8 +42,14 @@ public class ScanUtil {
     public void scanFile(MsFileInfoDto fileData, FileUploadTable fileUploadTableObject, String filePath, String s3Key){
         try{
             File inputFile = new File(filePath);
-            if (!inputFile.exists() || !inputFile.isFile()){
-                log.error("Invalid file path: {}", filePath);
+
+            // 파일이 존재하는지 확인
+            if (!inputFile.exists()) {
+                log.error("File does not exist: {}", inputFile.getAbsolutePath());
+                return;
+            }
+            if (!inputFile.isFile()) {
+                log.error("Path is not a file: {}", inputFile.getAbsolutePath());
                 return;
             }
 
