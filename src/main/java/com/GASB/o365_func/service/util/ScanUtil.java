@@ -6,16 +6,23 @@ import com.GASB.o365_func.model.entity.TypeScan;
 import com.GASB.o365_func.repository.TypeScanRepo;
 import com.GASB.o365_func.service.enumset.HeaderSignature;
 import com.GASB.o365_func.service.enumset.MimeType;
+import com.GASB.o365_func.service.message.MessageSender;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.Null;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @Slf4j
 @Service
@@ -24,9 +31,15 @@ public class ScanUtil {
 
 
     private final TypeScanRepo typeScanRepo;
+    private final MessageSender messageSender;
+    private final S3Client s3Client;
+    private final FileEncUtil fileEncUtil;
+
+    @Value("${aws.s3.bucket}")
+    private String bucketName;
 
     @Async
-    public void scanFile(MsFileInfoDto fileData, FileUploadTable fileUploadTableObject, String filePath){
+    public void scanFile(MsFileInfoDto fileData, FileUploadTable fileUploadTableObject, String filePath, String s3Key){
         try{
             File inputFile = new File(filePath);
             if (!inputFile.exists() || !inputFile.isFile()){
@@ -63,6 +76,11 @@ public class ScanUtil {
                     isMatched = checkAllType(mimeType, fileExtension, fileSignature, expectedFileTypeByExtension);
                     addData(fileUploadTableObject, isMatched, mimeType, fileSignature, fileExtension);
                 }
+
+                messageSender.sendMessage(fileUploadTableObject.getId());
+
+                uploadFileToS3(filePath,s3Key);
+
             }
         } catch (IllegalArgumentException e){
             log.error("Error scanning file: {}", e.getMessage(), e);
@@ -159,6 +177,41 @@ public class ScanUtil {
     private boolean checkWithoutSignature(String mimeType, String expectedMimeType, String extension) {
         return mimeType.equals(expectedMimeType) &&
                 MimeType.mimeMatch(mimeType, extension);
+    }
+
+
+    private void uploadFileToS3(String filePath, String s3Key) {
+
+        //암호화 진행
+        try {
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(s3Key)
+                    .build();
+            // 암호화한 파일을 업로드
+            s3Client.putObject(putObjectRequest, fileEncUtil.encryptAndSaveFile(filePath));
+            log.info("File uploaded successfully to S3: {}", s3Key);
+        } catch (RuntimeException e) {
+            log.error("Error uploading file to S3: {}", e.getMessage(), e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            deleteFileInLocal(filePath);
+        }
+    }
+    public void deleteFileInLocal(String filePath) {
+        try {
+            // 파일 경로를 Path 객체로 변환
+            Path path = Paths.get(filePath);
+
+            // 파일 삭제
+            Files.delete(path);
+            log.info("File deleted successfully from local filesystem: {}", filePath);
+
+        } catch (IOException e) {
+            // 파일 삭제 중 예외 처리
+            log.info("Error deleting file from local filesystem: {}" , e.getMessage());
+        }
     }
 
 }

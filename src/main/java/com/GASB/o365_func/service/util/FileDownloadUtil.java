@@ -8,6 +8,7 @@ import com.GASB.o365_func.service.message.MessageSender;
 import com.GASB.o365_func.tlsh.Tlsh;
 import com.GASB.o365_func.tlsh.TlshCreator;
 import com.microsoft.graph.requests.GraphServiceClient;
+import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -60,6 +61,17 @@ public class FileDownloadUtil {
 
     private static final String HASH_ALGORITHM = "SHA-256";
     private static final Path BASE_PATH = Paths.get("downloads");
+
+    @PostConstruct
+    public void init() {
+        try {
+            Files.createDirectories(BASE_PATH);
+            log.info("Base path directory created or already exists: {}", BASE_PATH.toAbsolutePath());
+        } catch (IOException e) {
+            log.error("Failed to create base path directory: {}", BASE_PATH.toAbsolutePath(), e);
+            throw new RuntimeException("Could not create base directory", e);
+        }
+    }
 
     @Async("threadPoolTaskExecutor")
     @Transactional
@@ -217,8 +229,6 @@ public class FileDownloadUtil {
         // 다른 작업을 계속 수행
         processAndSaveFileData(file, hash, s3Key, orgSaaSObject, changeTime, event_type, user, displayPath, tlsh, filePath);
 
-        uploadFileToS3(filePath, s3Key);
-
         return null;
     }
 
@@ -324,7 +334,7 @@ public class FileDownloadUtil {
 
         synchronized (this) {
             saveActivity(activity, file.getFile_name());
-            saveFileUpload(fileUploadTableObject, file, filePath);
+            saveFileUpload(fileUploadTableObject, file, filePath,s3Key);
             saveStoredFile(storedFile, file.getFile_name());
         }
     }
@@ -342,12 +352,12 @@ public class FileDownloadUtil {
         }
     }
 
-    private void saveFileUpload(FileUploadTable fileUploadTableObject, MsFileInfoDto file_data, String file_path) {
+    private void saveFileUpload(FileUploadTable fileUploadTableObject, MsFileInfoDto file_data, String file_path, String s3Key) {
         try {
             if (!fileUploadTableRepo.existsBySaasFileIdAndTimestamp(fileUploadTableObject.getSaasFileId(), fileUploadTableObject.getTimestamp())){
                 fileUploadTableRepo.save(fileUploadTableObject);
                 messageSender.sendMessage(fileUploadTableObject.getId());
-                scanUtil.scanFile(file_data, fileUploadTableObject, file_path);
+                scanUtil.scanFile(file_data, fileUploadTableObject, file_path, s3Key);
             } else {
                 log.warn("Duplicate file upload detected and ignored: {}", file_data.getFile_name());
             }
@@ -370,41 +380,6 @@ public class FileDownloadUtil {
             }
         } catch (DataIntegrityViolationException e) {
             log.error("Error saving file: {}", e.getMessage(), e);
-        }
-    }
-
-
-    private void uploadFileToS3(String filePath, String s3Key) {
-
-        //암호화 진행
-        try {
-            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(s3Key)
-                    .build();
-            // 암호화한 파일을 업로드
-            s3Client.putObject(putObjectRequest, fileEncUtil.encryptAndSaveFile(filePath));
-            log.info("File uploaded successfully to S3: {}", s3Key);
-        } catch (RuntimeException e) {
-            log.error("Error uploading file to S3: {}", e.getMessage(), e);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            deleteFileInLocal(filePath);
-        }
-    }
-    public void deleteFileInLocal(String filePath) {
-        try {
-            // 파일 경로를 Path 객체로 변환
-            Path path = Paths.get(filePath);
-
-            // 파일 삭제
-            Files.delete(path);
-            log.info("File deleted successfully from local filesystem: {}", filePath);
-
-        } catch (IOException e) {
-            // 파일 삭제 중 예외 처리
-            log.info("Error deleting file from local filesystem: {}" , e.getMessage());
         }
     }
 
