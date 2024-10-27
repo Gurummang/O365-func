@@ -106,11 +106,10 @@ public class FileDownloadUtil {
     }
 
 
-    private byte[] downloadFileWithSDK(String dirPath, MsFileInfoDto file, GraphServiceClient graphClient) {
+    private byte[] downloadFileWithSDK(String filePath, MsFileInfoDto file, GraphServiceClient graphClient) {
         try {
+            // Microsoft Graph API를 통한 파일 다운로드
             InputStream inputStream;
-
-            // 원드라이브 파일인 경우
             if (file.isOneDrive()) {
                 inputStream = graphClient.users(file.getFile_owner_id())
                         .drive()
@@ -118,10 +117,8 @@ public class FileDownloadUtil {
                         .content()
                         .buildRequest()
                         .get();
-
-                // 쉐어포인트 파일인 경우
             } else if (!file.isOneDrive()) {
-                inputStream = graphClient.sites(file.getSite_id())  // 쉐어포인트 사이트 ID 사용
+                inputStream = graphClient.sites(file.getSite_id())
                         .drive()
                         .items(file.getFile_id())
                         .content()
@@ -131,45 +128,49 @@ public class FileDownloadUtil {
                 throw new IllegalArgumentException("Unsupported file source.");
             }
 
-            // 바이트 배열로 변환
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            byte[] buffer = new byte[8192];
-            int bytesRead;
-            while ((bytesRead = inputStream.read(buffer)) != -1) {
-                outputStream.write(buffer, 0, bytesRead);
-            }
-            byte[] fileData = outputStream.toByteArray();
+            // 절대 경로로 변환하여 출력
+            Path absolutePath = Paths.get(filePath).toAbsolutePath();
+            log.info("Saving file to absolute path: {}", absolutePath);
 
-            Path filePath = Paths.get(dirPath, file.getFile_name());
-            File targetFile = filePath.toFile();
-
-            File parentDir = targetFile.getParentFile();
-            if (parentDir == null) {
-                log.error("Failed to get parent directory for targetFile: {}", targetFile.getAbsolutePath());
-                throw new IllegalStateException("Parent directory cannot be determined");
+            // 파일 저장 디렉터리 생성
+            Path parentDir = absolutePath.getParent();
+            if (parentDir != null && !Files.exists(parentDir)) {
+                Files.createDirectories(parentDir);
             }
 
-            // 부모 디렉토리가 존재하지 않으면 생성 시도
-            if (!parentDir.exists()) {
-                boolean dirCreated = parentDir.mkdirs();
-                if (!dirCreated) {
-                    log.error("Failed to create parent directories for file: {}", targetFile.getAbsolutePath());
-                    throw new IllegalStateException("Failed to create parent directories");
+            // 바이트 배열로 데이터를 다운로드 및 저장
+            try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                 FileOutputStream fileOutputStream = new FileOutputStream(filePath)) {
+
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = inputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, bytesRead);
                 }
+                outputStream.writeTo(fileOutputStream);
+
+                byte[] fileData = outputStream.toByteArray();
+                long downloadedSize = fileData.length;
+
+                log.info("File size: {} bytes", downloadedSize);
+                log.info("Download Successful, FileName: {}, File SavePath: {}", file.getFile_name(), absolutePath);
+
+                return fileData;
+
+            } catch (IOException e) {
+                log.error("IO error while downloading file: {}", e.getMessage(), e);
+                throw new RuntimeException("File download failed", e);
             }
 
-            // 파일 저장
-            try (FileOutputStream fileOutputStream = new FileOutputStream(targetFile)) {
-                fileOutputStream.write(fileData);
-            }
-
-            return fileData;
-
+        } catch (IOException e) {
+            log.error("IO error while downloading file: {}", e.getMessage(), e);
+            throw new RuntimeException("File download failed", e);
         } catch (Exception e) {
-            log.error("Error downloading file: {}", e.getMessage(), e);
-            throw new RuntimeException("Error downloading file", e);
+            log.error("An unexpected error occurred while downloading the file: {}", e.getMessage(), e);
+            throw new RuntimeException("Unexpected error", e);
         }
     }
+
 
     public void deleteFileInS3(String filePath) {
         try {
