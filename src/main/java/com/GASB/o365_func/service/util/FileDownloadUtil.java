@@ -94,7 +94,7 @@ public class FileDownloadUtil {
     public CompletableFuture<byte[]> downloadFileAsync(String fileUrl, MsFileInfoDto fileData, GraphServiceClient graphClient) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                return downloadFileWithSDK(BASE_PATH.toString(), fileData, graphClient);
+                return downloadFileWithSDK(BASE_PATH.resolve(fileData.file_name).toString(), fileData, graphClient);
             } catch (Exception e) {
                 log.error("Error downloading file: {}", fileUrl, e);
                 throw new RuntimeException("File download failed", e);
