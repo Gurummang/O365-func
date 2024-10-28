@@ -131,6 +131,10 @@ public class FileDownloadUtil {
             // 절대 경로로 변환하여 출력
             Path absolutePath = Paths.get(filePath).toAbsolutePath();
             log.info("Saving file to absolute path: {}", absolutePath);
+            if(absolutePath.getFileName() == null){
+                log.error("File name is null");
+                throw new IllegalArgumentException("File path must include the file name.");
+            }
 
             // 파일 저장 디렉터리 생성
             Path parentDir = absolutePath.getParent();
@@ -140,7 +144,7 @@ public class FileDownloadUtil {
 
             // 바이트 배열로 데이터를 다운로드 및 저장
             try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                 FileOutputStream fileOutputStream = new FileOutputStream(filePath)) {
+                 FileOutputStream fileOutputStream = new FileOutputStream(absolutePath.toString())) {
 
                 byte[] buffer = new byte[8192];
                 int bytesRead;
