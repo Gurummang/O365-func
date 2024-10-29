@@ -361,7 +361,6 @@ public class FileDownloadUtil {
         try {
             if (!fileUploadTableRepo.existsBySaasFileIdAndTimestamp(fileUploadTableObject.getSaasFileId(), fileUploadTableObject.getTimestamp())){
                 fileUploadTableRepo.save(fileUploadTableObject);
-                messageSender.sendMessage(fileUploadTableObject.getId());
                 scanUtil.scanFile(file_data, fileUploadTableObject, file_path, s3Key);
             } else {
                 log.warn("Duplicate file upload detected and ignored: {}", file_data.getFile_name());
